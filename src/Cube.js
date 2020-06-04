@@ -310,7 +310,7 @@ class Cube {
 
 		await this.db.collection(this.configColName).updateOne({_id: this.name}, {$set: {valid: false}});
 
-		// subtract new shadow docs from aggregates
+		// subtract old shadow docs from aggregates
 		await this.db.collection(this.shadowColName).aggregate([
 			{$match: shadowQuery},
 			...this.toCubeDeleteAggregation
