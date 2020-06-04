@@ -1,0 +1,27 @@
+{
+  "name": "cube",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "run": "npm run index.js",
+    "testOLAPService": "node notUnitTests/testOLAPService.js",
+    "testAsComponent": "node notUnitTests/testAsComponent.js"
+  },
+  "author": "Kirill Shpin",
+  "license": "ISC",
+  "dependencies": {
+    "debug": "^3.1.0",
+    "esm": "^3.2.25",
+    "eventemitter3": "^2.0.3",
+    "lodash": "^4.17.15",
+    "mingo": "^3.0.1",
+    "mongodb": "^3.5.5",
+    "nats": "^1.4.8"
+  },
+  "devDependencies": {
+    "mocha": "^7.1.1",
+    "docker-cli-js": "^2.7.1"
+  }
+}
