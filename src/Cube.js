@@ -1,6 +1,10 @@
+const logger = require("./logs/logger").child({
+	module: "Cube"
+});
+
 class Cube {
 
-	static GRANULARITIES = ["year", "month", "day", "hour"];
+	static GRANULARITIES = ["year", "month", "day", "hour"]; // descending order necessary
 
 	client;
 	db;
@@ -14,7 +18,7 @@ class Cube {
 	toCubeInsertAggregation;
 	toCubeDeleteAggregation;
 
-	configColName;
+	cubeMetaInfoColName;
 
 	dataColName;
 	cubeColName;
@@ -28,7 +32,7 @@ class Cube {
 		this.name = name;
 		this.principalEntity = principalEntity;
 
-		this.configColName = configColName;
+		this.cubeMetaInfoColName = configColName;
 
 		this.dataColName = colName;
 		this.cubeColName = colName + "_" + name + "_cube";
@@ -123,7 +127,7 @@ class Cube {
 			{$out: this.cubeColName}
 		];
 
-		this.lastProcessed = (await this.client.db("local").collection("oplog.rs").find({}, {wall: 1}).sort([["wall", -1]]).limit(1).next()).wall;
+		this.lastProcessed = (await this.client.db("local").collection("oplog.rs").find({}, {ts: 1}).sort([["ts", -1]]).limit(1).next()).ts;
 
 		const session = this.client.startSession();
 		session.startTransaction({});
@@ -135,9 +139,9 @@ class Cube {
 			await this.db.collection(this.dataColName).aggregate(toShadowAggregationQuery, {allowDiskUse: true}).next();
 			await this.db.collection(this.shadowColName).aggregate(toCubeAggregationQuery, {allowDiskUse: true}).next();
 
-			await this.db.createCollection(this.configColName);
-			await this.db.collection(this.configColName).deleteMany({model: this.model}, {session});
-			await this.db.collection(this.configColName).insertOne({_id: this.name, model: this.model, lastProcessed: this.lastProcessed, valid: true}, {session});
+			await this.db.createCollection(this.cubeMetaInfoColName);
+			await this.db.collection(this.cubeMetaInfoColName).deleteMany({model: this.model}, {session});
+			await this.db.collection(this.cubeMetaInfoColName).insertOne({_id: this.name, model: this.model, lastProcessed: this.lastProcessed, valid: true}, {session});
 
 			await this.db.collection(this.cubeColName).createIndex(indexKeys, {unique: true});
 			let keys = Object.keys(indexKeys);
@@ -177,7 +181,7 @@ class Cube {
 			throw new Error("Cube::validate: cube collection missing");
 		}
 
-		if (!(await this.db.collection(this.configColName).find({_id: this.name}).next()).valid) throw new Error("Cube::validate: cube not valid");
+		if (!(await this.db.collection(this.cubeMetaInfoColName).find({_id: this.name}).next()).valid) throw new Error("Cube::validate: cube not valid");
 
 		this._buildQueries();
 	}
@@ -301,14 +305,31 @@ class Cube {
 		];
 	}
 
-	async processOplogs(oplogs, lastProcessed) {
-		if (!(await this.db.collection(this.configColName).find({_id: this.name}).next()).valid) throw new Error("Cube::processOplogs: cube not valid");
+	async _markLastProcessedTime(lastProcessed, valid) {
+		await this.db.collection(this.cubeMetaInfoColName).updateOne({_id: this.name}, {$set: {lastProcessed, valid}});
+		this.lastProcessed = lastProcessed;
+	}
 
-		let ids = oplogs.filter(oplog => oplog.ts.getTime() > this.lastProcessed).map(oplog => oplog._id);
-		if (ids.length === 0) return;
+	async processOplogs(oplogs, lastProcessed) {
+		let log = logger.child({
+			func: "processOplogs"
+		});
+
+		if (!(await this.db.collection(this.cubeMetaInfoColName).find({_id: this.name}).next()).valid) {
+			log.debug({message: `cube [${this.name}] not valid, skipping`});
+			await this._markLastProcessedTime(lastProcessed, false);
+			return;
+		}
+
+		let ids = oplogs.filter(oplog => oplog.ts.compare(this.lastProcessed) >= 0).map(oplog => oplog._id);
+		if (ids.length === 0) {
+			log.debug({message: `cube [${this.name}] has no oplogs, skipping`});
+			await this._markLastProcessedTime(lastProcessed, true);
+			return;
+		}
 		let shadowQuery = {_id: {$in: ids}};
 
-		await this.db.collection(this.configColName).updateOne({_id: this.name}, {$set: {valid: false}});
+		await this.db.collection(this.cubeMetaInfoColName).updateOne({_id: this.name}, {$set: {valid: false}});
 
 		// subtract old shadow docs from aggregates
 		await this.db.collection(this.shadowColName).aggregate([
@@ -335,12 +356,22 @@ class Cube {
 		// purge zeros
 		await this.db.collection(this.cubeColName).deleteMany({count: 0});
 
-		// mark last processed time
-		await this.db.collection(this.configColName).updateOne({_id: this.name}, {$set: {lastProcessed, valid: true}});
-		this.lastProcessed = lastProcessed;
+		await this._markLastProcessedTime(lastProcessed, true);
 	}
 
-	async getAggregates(measures=[], dimensions=[], filters, dateReturnFormat) {
+	async getAggregates(measures=[], dimensions=[], filters, dateReturnFormat="ms") {
+		let log = logger.child({
+			func: "getAggregates"
+		});
+
+		log.debug({
+			message: "entered Cube::getAggregates",
+			measures,
+			dimensions,
+			filters,
+			dateReturnFormat
+		});
+
 		let matchQuery = {};
 		if (filters) {
 			Object.entries(filters).forEach(([key, value]) => {
@@ -382,23 +413,42 @@ class Cube {
 
 				if (reqIndex > modelIndex) throw new Error("Cube::getAggregates: requested granularity is smaller than stored");
 				if (reqIndex < modelIndex) {
-					convertDates.push({$addFields: {[endPath]: {$toDate: {$convert: {input: "$"+endPath, to: "long"}}}}}); // to date
-					let toDiscreteTime = {$addFields: {}};
+					convertDates.push({ // to date parts
+						$addFields: {
+							[endPath]: {
+								$dateToParts: {
+									date: {
+										$convert: {
+											input: {
+												$convert: {
+													input: "$" + endPath,
+													to: "long",
+													onError: {
+														$convert: {
+															input: 0,
+															to: "long"
+														}
+													}
+												}
+											},
+											to: "date"
+										}
+									}
+								}
+							}
+						}
+					});
+
 					let parts = {};
 
 					let matched = false;
 					Cube.GRANULARITIES.forEach(gran => {
 						if (!matched) {
-							if (gran === "day") toDiscreteTime.$addFields[endPath+".day"] = {["$dayOfMonth"]: "$"+endPath};
-							else toDiscreteTime.$addFields[endPath+"."+gran] = {["$"+gran]: "$"+endPath};
-
 							parts[gran] = "$"+endPath+"."+gran;
 						}
 
 						if (gran === dim.granularity) matched = true;
 					});
-
-					convertDates.push(toDiscreteTime); // to year/month/day/hour
 
 					convertDates.push({ // to truncated date
 						$addFields: {
@@ -462,7 +512,7 @@ model: {
 			path: "times.lastStatusAt",
 			id: "lastStatusAt",
 			type: "time",
-			timeFormat: "ms" // ["s", "ms", "ISODate", "ISODateString", "Timestamp"]
+			timeFormat: "ms" // TODO ["s", "ms", "ISODate", "ISODateString", "Timestamp"]
 			granularity: "hour"
 		}
 	],

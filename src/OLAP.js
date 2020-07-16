@@ -1,87 +1,167 @@
+const {Timestamp} = require("mongodb");
+const EventEmitter = require("events");
+const logger = require("./logs/logger").child({
+	module: "OLAP"
+});
+
 const Cube = require("./Cube");
 
 class OLAP {
-	DEFAULT_UPDATE_INTERVAL = 30000; // ms
-
 	client;
 	db;
 	cubes;
 
-	oplogsCache;
-	caching;
+	oplogStream;
+	oplogBuffer;
+	buffering; // state
 
-	updateInterval;
 	updateTimeout;
-	autoUpdating;
+	updateInterval; // state
+	autoUpdating; // state
 
-	configColName;
+	currentlyUpdating;
+	finishEmitter;
+
+	stateColName;
+	cubeMetaInfoColName;
 
 	oldestOplogTs;
 
-	constructor(client, db, configColName) {
+	constructor(client, db, stateColName, cubeInfoColName) {
 		this.client = client;
 		this.db = db;
 		this.cubes = {};
 
-		this.oplogsCache = [];
-		this.caching = false;
+		this.oplogBuffer = [];
+		this.buffering = false;
 
-		this.updateInterval = this.DEFAULT_UPDATE_INTERVAL;
 		this.autoUpdating = false;
-		this.updateAggregates = this.updateAggregates.bind(this);
+		this.currentlyUpdating = false;
 
-		this.configColName = configColName;
+		this.finishEmitter = new EventEmitter();
+
+		this.stateColName = stateColName;
+		this.cubeMetaInfoColName = cubeInfoColName;
+
+		this.oldestOplogTs = Timestamp.fromNumber(Date.now()/1000);
+
+		this.onData = function(doc) {
+			this.oplogBuffer.push({
+				ns: doc.ns,
+				ts: doc.ts,
+				o: doc.o,
+				o2: doc.o2
+			});
+		}.bind(this);
+		this.onError = function() {
+			this.startOplogBuffering();
+		}.bind(this);
+	}
+
+	async loadState() {
+		let log = logger.child({
+			func: "loadState"
+		});
+
+		let state = await this.db.collection(this.stateColName).find({_id: "state"}).next();
+		if (state) {
+			if (typeof state.buffering === "boolean") {
+				this.buffering = state.buffering;
+				if (this.buffering) await this.startOplogBuffering();
+			}
+			if (typeof state.autoUpdating === "boolean") {
+				this.autoUpdating = state.autoUpdating;
+				if (this.autoUpdating) {
+					if (typeof state.updateInterval === "number") await this.startAutoUpdate({interval: state.updateInterval});
+					else await this.startAutoUpdate({});
+				}
+			}
+		} else {
+			log.info({message: "no state, adding"});
+			await this.db.collection(this.stateColName).insertOne({_id: "state", buffering: false, autoUpdating: false, updateInterval: 30000});
+		}
 	}
 
 	async createCube({name, model, principalEntity}) {
 		let colName = model.source.slice(model.source.indexOf(".")+1);
 
-		let cube = new Cube(this.client, this.db, this.configColName, colName, name, model, principalEntity);
+		let cube = new Cube(this.client, this.db, this.cubeMetaInfoColName, colName, name, model, principalEntity);
 		await cube.initNewCube();
 
 		if (Object.keys(this.cubes).length === 0) this.oldestOplogTs = cube.lastProcessed;
 
 		if (this.cubes[colName]) this.cubes[colName].push(cube);
 		else this.cubes[colName] = [cube];
+
+		if (this.buffering) await this.startOplogBuffering();
 	}
 
 	async loadCubes() {
-		let existingCubes = await this.db.collection(this.configColName).find({}).toArray();
+		let log = logger.child({
+			func: "loadCubes"
+		});
 
+		log.debug({stage: "getting cube information from the database"});
+
+		let existingCubes = await this.db.collection(this.cubeMetaInfoColName).find({}).toArray();
+
+		log.debug({stage: "loading cubes"});
+
+		let errors = [];
 		for (const extCube of existingCubes) {
-			await this._loadCube(extCube._id, extCube.model);
-			if (this.oldestOplogTs > extCube.lastProcessed) this.oldestOplogTs = extCube.lastProcessed;
+			if (!extCube.valid) {
+				log.trace({stage: "loading cubes", cube: extCube._id, message: "cube invalid, skipping"});
+				continue;
+			}
+
+			let result = await this._loadCube(extCube._id, extCube.model, extCube.principalEntity, extCube.lastProcessed);
+
+			if (result === 0) log.trace({stage: "loading cubes", cube: extCube._id, message: "loaded successfully"});
+			else if (result === 1) log.trace({stage: "loading cubes", cube: extCube._id, message: "already loaded"});
+			else {
+				log.warn({stage: "loading cubes", cube: extCube._id, error: result});
+				errors.push(result);
+			}
 		}
+
+		if (this.buffering) {
+			log.debug({stage: "rebuffering oplogs"});
+			await this.startOplogBuffering();
+		}
+
+		return {errors};
 	}
 
-	async _loadCube(name, model) {
+	async _loadCube(name, model, principalEntity, lastProcessed) {
 		let colName = model.source.slice(model.source.indexOf(".")+1);
-		if (this.cubes[colName] && this.cubes[colName].some(c => c.name === name)) return;
+		if (this.cubes[colName] && this.cubes[colName].some(c => c.name === name)) return 1;
 
-		let cube = new Cube(this.client, this.db, this.configColName, colName, name, model);
+		let cube = new Cube(this.client, this.db, this.cubeMetaInfoColName, colName, name, model, principalEntity);
 
-		let failed = false;
 		try {
 			await cube.validate();
 		} catch (err) {
-			console.log(err);
-			console.log("OLAP::_loadCube: could not load cube [" + name + "] for collection [" + colName + "]");
-			failed = true;
+			this.db.collection(this.cubeMetaInfoColName).updateOne({_id: name}, {$set: {valid: false}});
+
+			return "OLAP::_loadCube: could not load cube [" + name + "] for collection [" + colName + "]";
 		}
-		if (!failed) {
-			if (this.cubes[colName]) this.cubes[colName].push(cube);
-			else this.cubes[colName] = [cube];
-		}
+
+		if (this.cubes[colName]) this.cubes[colName].push(cube);
+		else this.cubes[colName] = [cube];
+
+		if (this.oldestOplogTs > lastProcessed) this.oldestOplogTs = lastProcessed;
+
+		return 0;
 	}
 
 	listCubes() {
-		let cols = [];
-
-		Object.entries(this.cubes).forEach(([col, cubes]) => {
-			cols.push({collection: col, cubes: cubes.map(cube => cube.name)});
-		});
-
-		return cols;
+		return Object.entries(this.cubes).map(([col, cubes]) => ({
+			collection: col,
+			cubes: cubes.map(cube => ({
+				name: cube.name,
+				principalEntity: cube.principalEntity
+			}))
+		}));
 	}
 
 	async deleteCube({colName, cubeName}) {
@@ -93,62 +173,94 @@ class OLAP {
 
 		await this.db.collection(cube.cubeColName).drop();
 		await this.db.collection(cube.shadowColName).drop();
-		await this.db.collection(this.configColName).deleteOne({_id: cube.name});
+		await this.db.collection(this.cubeMetaInfoColName).deleteOne({_id: cube.name});
 
 		this.cubes[colName].splice(cubeIdx, 1);
 	}
 
-	startAutoUpdate({interval=30000}) {
-		this.updateInterval = interval;
-		this.updateTimeout = setTimeout(this.updateAggregates, interval);
-		this.autoUpdating = true;
+	_getNameSpaces() {
+		return Object.values(this.cubes).reduce((accumulator, cubes) => [...accumulator, ...cubes.map(cube => cube.model.source)], []);
 	}
 
-	stopAutoUpdate() {
+	_queueUpdate() {
+		clearTimeout(this.updateTimeout);
+		this.updateTimeout = setTimeout(this.updateAggregates.bind(this), this.updateInterval);
+	}
+
+	async startAutoUpdate({interval=30000}) {
+		this.autoUpdating = true;
+		this.updateInterval = interval;
+
+		await this.db.collection(this.stateColName).updateOne({_id: "state"}, {$set: {autoUpdating: true, updateInterval: interval}});
+
+		this._queueUpdate();
+	}
+
+	stopAutoUpdate({exiting=false}) {
 		clearTimeout(this.updateTimeout);
 		this.autoUpdating = false;
+
+		if (!exiting) this.db.collection(this.stateColName).updateOne({_id: "state"}, {$set: {autoUpdating: false}});
 	}
 
-	startOplogCaching() {
-		if (this.caching) throw new Error("OLAP::startOplogCaching: already caching");
+	async startOplogBuffering() {
+		await this.stopOplogBuffering({});
 
 		this.oplogStream = this.client.db("local").collection("oplog.rs").find({
-			wall: {$gt: this.oldestOplogTs},
+			ns: {$in: this._getNameSpaces()},
+			ts: {$gt: this.oldestOplogTs},
 			op: {$in: ["i", "u", "d"]},
 			$or: [{o: {$exists: 1}}, {o2: {$exists: 1}}]
 		}, {
 			tailable: true,
 			awaitData: true,
-			oplogReplay: true,
+			oplogReplay: true, // skip initial scan, only works when restricting "ts"
 			numberOfRetries: Number.MAX_VALUE
 		}).project({
 			ns: 1,
-			wall: 1,
+			ts: 1,
 			o: 1,
 			o2: 1
 		}).stream();
 
-		this.oplogStream.on("error", () => {
-			throw new Error("OLAP::startOplogCaching: oplog stream crashed");
-		});
-		this.oplogStream.on("data", doc => {
-			this.oplogsCache.push(doc);
-		});
+		this.oplogStream.on("data", this.onData);
+		this.oplogStream.on("error", this.onError);
 
-		this.caching = true;
+		this.buffering = true;
+
+		await this.db.collection(this.stateColName).updateOne({_id: "state"}, {$set: {buffering: true}});
 	}
 
-	async stopOplogCaching() {
-		await this.oplogStream.close();
+	async stopOplogBuffering({exiting=false}) {
+		if (!this.oplogStream) return;
 
-		this.caching = false;
+		this.oplogStream.off("data", this.onData);
+		this.oplogStream.off("error", this.onError);
+
+		await this.oplogStream.close();
+		this.oplogStream = null;
+
+		this.buffering = false;
+
+		if (!exiting) this.db.collection(this.stateColName).updateOne({_id: "state"}, {$set: {buffering: false}});
 	}
 
 	async updateAggregates() {
+		let log = logger.child({
+			func: "updateAggregates"
+		});
+
+		this.currentlyUpdating = true;
+
+		log.debug({stage: "getting oplogs"});
+
 		let oplogs;
-		if (this.caching) oplogs = this.oplogsCache;
-		else oplogs = await this.client.db("local").collection("oplog.rs").find({
-			wall: {$gt: this.oldestOplogTs},
+		if (this.buffering) {
+			oplogs = this.oplogBuffer;
+			this.oplogBuffer = [];
+		} else oplogs = await this.client.db("local").collection("oplog.rs").find({
+			ns: {$in: this._getNameSpaces()},
+			ts: {$gt: this.oldestOplogTs},
 			op: {$in: ["i", "u", "d"]},
 			$or: [{o: {$exists: 1}}, {o2: {$exists: 1}}]
 		}, {
@@ -158,47 +270,62 @@ class OLAP {
 			numberOfRetries: 0
 		}).project({
 			ns: 1,
-			wall: 1,
+			ts: 1,
 			o: 1,
 			o2: 1
 		}).toArray();
 
-		let oplogsByCol = {};
-		let lastOplogTs = 0;
+		log.debug({stage: "filtering oplogs"});
 
+		let oplogsByCol = {};
+		let lastOplogTs = Timestamp(0, 0);
 		Object.keys(this.cubes).forEach(colName => {
 			let ns = this.db.databaseName + "." + colName;
 			oplogsByCol[colName] = oplogs.filter(oplog => {
-				if (lastOplogTs < oplog.wall) lastOplogTs = oplog.wall;
+				if (lastOplogTs.compare(oplog.ts) < 0) lastOplogTs = oplog.ts;
 				return oplog.ns === ns;
 			}).map(oplog => {
-				if (oplog.o2) return {ts: oplog.wall, _id: oplog.o2._id};
-				return {ts: oplog.wall, _id: oplog.o._id};
+				if (oplog.o2) return {ts: oplog.ts, _id: oplog.o2._id};
+				return {ts: oplog.ts, _id: oplog.o._id};
 			});
-
-			if (oplogsByCol[colName].length === 0) delete oplogsByCol[colName];
 		});
 
 		let affectedCols = Object.keys(oplogsByCol);
 
+		log.debug({stage: "updating aggregates"});
+
 		for (let col of affectedCols) {
 			for (let curCube of this.cubes[col]) {
+				log.trace({stage: "updating aggregates", cube: curCube.name});
 				await curCube.processOplogs(oplogsByCol[col], lastOplogTs);
 			}
 		}
 
 		if (lastOplogTs) this.oldestOplogTs = lastOplogTs;
 
-		if (this.autoUpdating) this.startAutoUpdate(this.updateInterval);
+		if (this.autoUpdating) this._queueUpdate(this.updateInterval);
+
+		this.currentlyUpdating = false;
+		this.finishEmitter.emit("done");
 	}
 
 	async aggregate({colName, cubeName, measures, dimensions, filters, dateReturnFormat="ms"}) {
+		let log = logger.child({
+			func: "aggregate"
+		});
+
+		log.debug({stage: "entered function"});
+
 		if (!this.cubes.hasOwnProperty(colName)) throw new Error("OLAP::getAggregates: no cubes for collection [" + colName + "]");
 
 		await this.updateAggregates();
 
 		let cube = this.cubes[colName].find(cube => cube.name === cubeName);
 		if (!cube) throw new Error("OLAP::getAggregates: no cube [" + cubeName + "] for collection [" + colName + "]");
+
+		log.debug({
+			message: "arguments valid so far"
+		});
 
 		return await cube.getAggregates(measures, dimensions, filters, dateReturnFormat);
 	}

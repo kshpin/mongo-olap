@@ -44,6 +44,8 @@ describe("OLAP", function() {
 	});
 
 	after(async function() {
+		//await olap.stopOplogBuffering();
+
 		client.close();
 
 		await dockerCommand("kill testMongod_143");
@@ -76,7 +78,7 @@ describe("OLAP", function() {
 
 		assert.equal(await db.collection("c1").find({}).count(), 4);
 
-		olap = new OLAP(client, db, "olap_config");
+		olap = new OLAP(client, db, "olap_state", "olap_cubes");
 	});
 
 	describe("MongoDB mechanics", function() {
@@ -654,13 +656,13 @@ describe("OLAP", function() {
 				]
 			}});
 
-			let secondOlap = new OLAP(client, db, "olap_config");
+			let secondOlap = new OLAP(client, db, "olap_state", "olap_cubes");
 			await secondOlap.loadCubes();
 			assert.equal(Object.keys(olap.cubes).length, 1);
 		});
 	});
 
-	describe("#catchUpOnOplogs()", function() {
+	describe("#updateAggregates()", function() {
 		it("should handle absences of oplogs with no cubes", async function() {
 			await olap.updateAggregates();
 		});
@@ -1562,7 +1564,7 @@ describe("OLAP", function() {
 		});
 	});
 
-	describe("#catchUpOnOplogs missing fields", async function() {
+	describe("#updateAggregates() missing fields", async function() {
 		it("array dimension inserts", async function() {
 			await db.collection("c2").insertMany([
 				{
@@ -2042,6 +2044,116 @@ describe("OLAP", function() {
 			assert.deepEqual(rest0, {d: {}});
 
 			assert.equal(await db.collection("c2_br_cube").find({}).count(), 0);
+		});
+	});
+
+	describe("Oplog buffering", async function() {
+		it("should not leave trailing listeners", async function() {
+			await olap.createCube({name: "main", model: {
+				source: "db1.c1",
+				dimensions: [
+					{
+						path: "c",
+						id: "city"
+					}
+				],
+				measures: [
+					{
+						path: "m",
+						id: "males"
+					},
+					{
+						path: "f",
+						id: "females"
+					}
+				]
+			}});
+
+			await olap.startOplogBuffering();
+
+			await new Promise(res => setTimeout(res, 100));
+
+			await olap.stopOplogBuffering({});
+		});
+
+		it("should buffer oplogs for existing cubes", async function() {
+			await olap.createCube({name: "main", model: {
+				source: "db1.c1",
+				dimensions: [
+					{
+						path: "c",
+						id: "city"
+					}
+				],
+					measures: [
+					{
+						path: "m",
+						id: "males"
+					},
+					{
+						path: "f",
+						id: "females"
+					}
+				]
+			}});
+
+			await olap.startOplogBuffering();
+
+			await new Promise(res => setTimeout(res, 100));
+
+			await db.collection("c1").deleteOne({c: "City 3"});
+
+			await new Promise(res => setTimeout(res, 100));
+
+			assert.equal(olap.oplogBuffer.length, 1);
+
+			let {ts, o, o2, ...rest} = olap.oplogBuffer[0];
+			assert.deepEqual(rest, {
+				ns: "db1.c1"
+			});
+			assert(o._id !== undefined);
+
+			await olap.stopOplogBuffering({});
+		});
+
+		it("should buffer oplogs for new cubes", async function() {
+			await olap.startOplogBuffering();
+
+			await new Promise(res => setTimeout(res, 100));
+
+			await olap.createCube({name: "main", model: {
+				source: "db1.c1",
+				dimensions: [
+					{
+						path: "c",
+						id: "city"
+					}
+				],
+				measures: [
+					{
+						path: "m",
+						id: "males"
+					},
+					{
+						path: "f",
+						id: "females"
+					}
+				]
+			}});
+
+			await db.collection("c1").deleteOne({c: "City 3"});
+
+			await new Promise(res => setTimeout(res, 100));
+
+			assert.equal(olap.oplogBuffer.length, 1);
+
+			let {ts, o, o2, ...rest} = olap.oplogBuffer[0];
+			assert.deepEqual(rest, {
+				ns: "db1.c1"
+			});
+			assert(o._id !== undefined);
+
+			await olap.stopOplogBuffering({});
 		});
 	});
 

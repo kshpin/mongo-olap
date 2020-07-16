@@ -1,0 +1,27 @@
+version: "2"
+
+services:
+  olap:
+    container_name: olap
+    image: kirill/cube2
+    environment:
+      - "DB_URL=mongodb://mongo:27017/"
+      - "NATS_URL=nats://nats:4222/"
+    volumes:
+      - ./:/usr/src/app/
+  mongo:
+    container_name: mongo
+    image: mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - /home/aether/dockerTests/data/:/data/db/
+      - /home/aether/dockerTests/logs/:/var/log/mongodb/
+      - ./tests/config/mongod.conf:/etc/mongo/mongod.conf
+    command: "--config /etc/mongo/mongod.conf"
+
+  nats:
+    container_name: nats
+    image: nats
+    ports:
+      - "4222:4222"

@@ -1,0 +1,5 @@
+.idea
+node_modules
+tests
+starters/syntaxTest.js
+starters/testAsComponent.js

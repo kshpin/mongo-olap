@@ -13,7 +13,7 @@ async function connectDb(url, dbName) {
 
 	let {mongoClient, db} = await connectDb(url, dbName);
 
-	let olap = new OLAP(mongoClient, db, "olap_config"); // each OLAP is tied to a particular DB
+	let olap = new OLAP(mongoClient, db, "olap_state", "olap_cubes"); // each OLAP is tied to a particular DB
 	await olap.startOplogListening(null);
 
 	/*await olap.loadCube({
