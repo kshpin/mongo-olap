@@ -46,7 +46,7 @@ model: {
       path: "times.lastStatusAt",
       id: "lastStatusAt",
       type: "time",
-      timeFormat: "ms" // the value is expected to represent the number of milliseconds since 1 January 1970 UTC
+      timeFormat: "ms", // the value is expected to represent the number of milliseconds since 1 January 1970 UTC
       granularity: "hour" // since time values are usually unique, a granularity is necessary for effective aggregation
                           // possible values: "hour", "day", "month", "year"
     }
