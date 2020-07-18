@@ -106,10 +106,11 @@ async function startService() {
 
 	log.debug({stage: `Connecting to NATS at [${config.nats.url}]`});
 
-	nc = NATS.connect({
+	nc = NATS.connect({ // TODO add other authorization methods
 		url: process.env.NATS_URL || "nats://localhost:4222/",
 		//user: "foo",
 		//pass: "bar",
+		json: true,
 		maxPingOut: 1,
 		maxReconnectAttempts: -1,
 		pingInterval: config.nats.pingInterval,
@@ -149,12 +150,10 @@ async function startService() {
 
 	// nats request handle ---------------------------------------------------------------------------------------------
 
-	let natsResponse = async (msg, reply, func) => {
+	let natsResponse = async (args, reply, func) => {
 		let log = logger.child({
 			func: "natsResponse"
 		});
-
-		let args = JSON.parse(msg);
 
 		log.debug({
 			event: "request received",
@@ -176,7 +175,7 @@ async function startService() {
 		let result = await runFunction(func, args);
 		processingRequests--;
 
-		if (reply) nc.publish(reply, JSON.stringify(result));
+		if (reply) nc.publish(reply, result);
 
 		log.debug({event: "job complete", job: func.name});
 		olap.finishEmitter.emit("done");

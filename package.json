@@ -13,7 +13,6 @@
   "license": "ISC",
   "dependencies": {
     "bunyan": "^1.8.14",
-    "debug": "^3.1.0",
     "esm": "^3.2.25",
     "mongodb": "^3.5.5",
     "nats": "^1.4.8"
