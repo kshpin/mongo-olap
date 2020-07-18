@@ -71,53 +71,18 @@ let olap = new OLAP(mongoClient, db, "olap_state", "olap_config");
 ```
 
 NATS API (all parameters are single stringified JSON objects):
-// TODO turn into table
-```javascript
-"olap_createCube" // creates a cube
-parameters: {
-  name, // name of the cube
-  model, // cube model (elaborated on below)
-  principalEntity // the logical entity representing what the cube is aggregating
-}
-
-"olap_loadCubes" // loads cubes from configuration
-parameters: {}
-
-"olap_listCubes" // lists loaded cubes
-parameters: {}
-
-"olap_deleteCube" // deletes a cube
-parameters: {
-  colName, // name of the collection on which the cube is based
-  cubeName // name of the cube to delete
-}
-
-"olap_startAutoUpdate" // begins auto updating the aggregates at an interval (off by default)
-parameters: {
-  interval // number of milliseconds between updates (default 30000)
-}
-
-"olap_stopAutoUpdate" // stops auto updating
-parameters: {}
-
-"olap_startOplogBuffering" // begins buffering oplogs, speeding up the update process (off by default, but highly recommended)
-parameters: {}
-
-"olap_stopOplogBuffering" // stops buffering oplogs
-parameters: {}
-
-"olap_updateAggregates" // updates aggregates once
-parameters: {}
-
-"olap_aggregate" // aggregates the cube
-parameters: {
-  colName, // name of collection on which the cube is based
-  cubeName, // name of cube
-  measures, // measures to include in aggregation
-  dimensions, // dimensions to keep separate in aggregation
-  filters // filters for including documents in aggregation
-}
-```
+| Publish topic | Parameters |
+| --- | --- |
+| `"olap_createCube"`<br>creates a cube | name - name of the cube<br>model - cube model<br>principalEntity - the logical entity representing what the cube is aggregating |
+| `"olap_loadCubes"`<br>loads cubes from configuration | |
+| `"olap_listCubes"`<br>lists loaded cubes | |
+| `"olap_deleteCube"`<br>deletes a cube | colName - name of the collection on which the cube is based<br>cubeName - name of the cube to delete|
+| `"olap_startAutoUpdate"`<br>begins auto updating the aggregates at an interval (off by default) | interval - number of milliseconds between updates (default 30000) |
+| `"olap_stopAutoUpdate"`<br>stops auto updating | |
+| `"olap_startOplogBuffering"`<br>begins buffering oplogs, speeding up the update process (off by default, but highly recommended) | |
+| `"olap_stopOplogBuffering"`<br>stops buffering oplogs | |
+| `"olap_updateAggregates"`<br>updates aggregates once | |
+| `"olap_aggregate"`<br>aggregates the cube | colName - name of collection on which the cube is based<br>cubeName - name of cube<br>measures - measures to include in aggregation<br>dimensions - dimensions to keep separate in aggregation<br>filters - filters for including documents in aggregation |
 
 ## Usage examples
 Let's first create a Cube. The source collection stores information about website visits.
