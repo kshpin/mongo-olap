@@ -1,4 +1,4 @@
-# Cube
+# Mongo-OLAP
 A MongoDB OLAP microservice for continuous pre-aggregation.
 
 By defining a particular model for future aggregation requests, a lot of the information in the database may be aggregated to its maximum without losing information in terms of the model. This may speed up the aggregation process by several orders of magnitude, for a well chosen model.
@@ -166,3 +166,5 @@ nc.publish("olap_aggregate", {
 }, inbox); // NATS inbox to listen for the response
 ```
 This will return how many visits the side had, irrespective of locale, by month.
+
+License: AGPLv3
