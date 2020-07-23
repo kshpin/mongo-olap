@@ -7,6 +7,19 @@ const logger = require("./logs/logger").child({
 
 let config = require("./config");
 
+let API = [
+	"createCube",
+	"loadCubes",
+	"listCubes",
+	"deleteCube",
+	"startAutoUpdate",
+	"stopAutoUpdate",
+	"startOplogBuffering",
+	"stopOplogBuffering",
+	"updateAggregates",
+	"aggregate"
+];
+
 async function startService() {
 	let log = logger.child({
 		func: "startService"
@@ -80,7 +93,6 @@ async function startService() {
 
 	// -----------------------------------------------------------------------------------------------------------------
 
-	let dbRetryInterval = process.env.DB_RETRY_INTERVAL || 1000;
 	log.debug({stage: `Connecting to MongoDB at [${config.mongo.url}]`});
 	while (true) {
 		try {
@@ -89,7 +101,7 @@ async function startService() {
 			break;
 		} catch (err) {
 			log.trace({message: "MongoDB retrying", error: err.message});
-			await new Promise(res => setTimeout(res, dbRetryInterval));
+			await new Promise(res => setTimeout(res, config.mongo.retryInterval));
 		}
 	}
 
@@ -107,7 +119,7 @@ async function startService() {
 	log.debug({stage: `Connecting to NATS at [${config.nats.url}]`});
 
 	nc = NATS.connect({ // TODO add other authorization methods
-		url: process.env.NATS_URL || "nats://localhost:4222/",
+		url: config.nats.url,
 		//user: "foo",
 		//pass: "bar",
 		json: true,
@@ -117,26 +129,6 @@ async function startService() {
 		waitOnFirstConnect: true
 	});
 
-	nc.on("connect", async () => {
-		log.debug({event: "Connected to NATS"});
-		connected = true;
-
-		log.debug({stage: "loading state"});
-		await olap.loadState();
-
-		subscribeCodes = [
-			nc.subscribe("olap_createCube",			(msg, reply) => natsResponse(msg, reply, olap.createCube)),
-			nc.subscribe("olap_loadCubes",			(msg, reply) => natsResponse(msg, reply, olap.loadCubes)),
-			nc.subscribe("olap_listCubes",			(msg, reply) => natsResponse(msg, reply, olap.listCubes)),
-			nc.subscribe("olap_deleteCube",			(msg, reply) => natsResponse(msg, reply, olap.deleteCube)),
-			nc.subscribe("olap_startAutoUpdate",		(msg, reply) => natsResponse(msg, reply, olap.startAutoUpdate)),
-			nc.subscribe("olap_stopAutoUpdate",		(msg, reply) => natsResponse(msg, reply, olap.stopAutoUpdate)),
-			nc.subscribe("olap_startOplogBuffering",	(msg, reply) => natsResponse(msg, reply, olap.startOplogBuffering)),
-			nc.subscribe("olap_stopOplogBuffering",	(msg, reply) => natsResponse(msg, reply, olap.stopOplogBuffering)),
-			nc.subscribe("olap_updateAggregates",	(msg, reply) => natsResponse(msg, reply, olap.updateAggregates)),
-			nc.subscribe("olap_aggregate",			(msg, reply) => natsResponse(msg, reply, olap.aggregate))
-		];
-	});
 	nc.on("error", err => {
 		log.error({error: err.message});
 	});
@@ -146,6 +138,15 @@ async function startService() {
 	nc.on("reconnecting", () => {
 		if (connected) sigResponse("SELF KILL");
 		else log.trace("NATS retrying");
+	});
+	nc.on("connect", async () => {
+		log.debug({event: "Connected to NATS"});
+		connected = true;
+
+		log.debug({stage: "loading state"});
+		await olap.loadState();
+
+		subscribeCodes = API.map(func => nc.subscribe(`${config.nats.prefix}_olap_${func}`, (msg, reply) => natsResponse(msg, reply, olap[func])));
 	});
 
 	// nats request handle ---------------------------------------------------------------------------------------------
@@ -194,10 +195,6 @@ async function connectDb(url, dbName) {
 	let mongoClient = await MongoClient.connect(url);
 	let db = mongoClient.db(dbName);
 	return [mongoClient, db];
-}
-
-function errToSendable(err) {
-	return {message: err.message, stackTrace: err.stack.toString()};
 }
 
 module.exports = {startService};

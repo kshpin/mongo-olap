@@ -6,9 +6,10 @@ module.exports = {
 	},
 	nats: {
 		url: process.env.NATS_URL || "nats://localhost:4222/",
-		pingInterval: process.env.NATS_PING_INTERVAL || 10000
+		pingInterval: process.env.NATS_PING_INTERVAL || 10000,
+		prefix: process.env.NATS_PREFIX || "main"
 	},
 	logger: {
-		level: process.env.LOGGER_LEVEL || "trace"
+		level: process.env.LOGGER_LEVEL || "info"
 	}
 };
