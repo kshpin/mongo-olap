@@ -1,16 +1,25 @@
 {
-  "name": "cube",
+  "name": "mongo-olap",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "An OLAP service for MongoDB",
+  "main": "starters/runOLAPService.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "run": "npm run index.js",
     "testOLAPService": "node starters/runOLAPService.js",
     "testAsComponent": "node starters/testAsComponent.js"
   },
-  "author": "Kirill Shpin",
-  "license": "ISC",
+  "author": {
+    "name": "Kirill Shpin",
+    "email": "kirill.shpin@gmail.com"
+  },
+  "license": "MIT",
+  "keywords": [
+    "mongodb",
+    "olap",
+    "olap-cube"
+  ],
+  "repository": "github:kshpin/mongo-olap",
   "dependencies": {
     "bunyan": "^1.8.14",
     "esm": "^3.2.25",
