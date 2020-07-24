@@ -6,19 +6,18 @@ By defining a particular model for future aggregation requests, a lot of the inf
 This service relies on MongoDB's replication set setting, which allows using its `oplogs` to keep track of changes to the database, and thus keep the pre-aggregates up to date. To enable this, run `rs.initiate()` in MongoDB's shell.
 
 [NATS](https://nats.io/) is the only currently supported interface to the OLAP service. Both it and MongoDB must be running, with their respective connection information in the following environment variables (defaults in comments):
-```javascript
-// mongo
-DB_URL // "mongodb://localhost:27017/",
-DB_NAME // "db1",
-DB_RETRY_INTERVAL // 1000
 
-// nats
-NATS_URL // "nats://localhost:4222/",
-NATS_PING_INTERVAL // 10000
+| Environment variable | Default value | Meaning |
+| --- | --- | --- |
+| `DB_URL` | `mongodb://localhost:27017/` | The url through which to connect to MongoDB |
+| `DB_NAME` | `db1` | The database name within MongoDB to use as the data source |
+| `DB_RETRY_INTERVAL` | `1000` | Millisecond interval to try connecting to MongoDB again (only for first connection, disconnecting after a successful connection results in a fatal error) |
+| `NATS_URL` | `nats://localhost:4222/` | The url through which to connect to NATS |
+| `NATS_PING_INTERVAL` | `10000` | Millisecond interval between checkAlive pings to NATS |
+| `LOGGER_LEVEL` | `info` | Logger level (possible options: `fatal`, `error`, `warn`, `info`, `debug`, `trace`) |
 
-// logger
-LOGGER_LEVEL // "info"
-```
+MongoDB version: `3.5.5` or higher.
+NATS version: `1.4.8` or higher.
 
 ## Model
 The cube model is described in the following way:
@@ -119,7 +118,7 @@ nc.publish("olap_createCube", {
   principalEntity: "visit" // this doesn't impact aggregation, but keeping this in mind when choosing a model is important for coherency of aggregation results
 });
 ```
-Now that the cube exists, we can already make 
+Once the cube is created, we can already make aggregation requests:
 ```javascript
 nc.publish("olap_aggregate", {
   colName: "col1",
