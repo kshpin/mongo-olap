@@ -48,17 +48,15 @@ class OLAP {
 
 		this.oldestOplogTs = Timestamp.fromNumber(Date.now()/1000);
 
-		this.onData = function(doc) {
+		this.onError = () => this.startOplogBuffering();
+		this.onData = doc => {
 			this.oplogBuffer.push({
 				ns: doc.ns,
 				ts: doc.ts,
 				o: doc.o,
 				o2: doc.o2
 			});
-		}.bind(this);
-		this.onError = function() {
-			this.startOplogBuffering();
-		}.bind(this);
+		};
 	}
 
 	async loadState() {

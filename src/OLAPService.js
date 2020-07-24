@@ -97,7 +97,6 @@ async function startService() {
 	while (true) {
 		try {
 			[mongoClient, db] = await connectDb(config.mongo.url, config.mongo.dbName);
-
 			break;
 		} catch (err) {
 			log.trace({message: "MongoDB retrying", error: err.message});
