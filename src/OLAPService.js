@@ -7,7 +7,7 @@ const logger = require("./logs/logger").child({
 
 let config = require("./config");
 
-let API = [
+const API = [
 	"createCube",
 	"loadCubes",
 	"listCubes",
