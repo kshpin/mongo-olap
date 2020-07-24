@@ -7,6 +7,11 @@ const logger = require("./logs/logger").child({
 const Cube = require("./Cube");
 
 class OLAP {
+
+	static DEFAULT_BUFFERING= true;
+	static DEFAULT_AUTO_UPDATING = true;
+	static DEFAULT_UPDATE_INTERVAL = 30000;
+
 	client;
 	db;
 	cubes;
@@ -33,9 +38,7 @@ class OLAP {
 		this.cubes = {};
 
 		this.oplogBuffer = [];
-		this.buffering = false;
 
-		this.autoUpdating = false;
 		this.currentlyUpdating = false;
 
 		this.finishEmitter = new EventEmitter();
@@ -65,21 +68,29 @@ class OLAP {
 
 		let state = await this.db.collection(this.stateColName).find({_id: "state"}).next();
 		if (state) {
-			if (typeof state.buffering === "boolean") {
-				this.buffering = state.buffering;
-				if (this.buffering) await this.startOplogBuffering();
+			if (typeof state.buffering !== "boolean") {
+				log.warn({message: "invalid [buffering] state, using default", state});
+				state.buffering = OLAP.DEFAULT_BUFFERING;
+				await this.db.collection(this.stateColName).updateOne({_id: "state"}, {$set: {buffering: state.buffering}});
 			}
-			if (typeof state.autoUpdating === "boolean") {
-				this.autoUpdating = state.autoUpdating;
-				if (this.autoUpdating) {
-					if (typeof state.updateInterval === "number") await this.startAutoUpdate({interval: state.updateInterval});
-					else await this.startAutoUpdate({});
-				}
+			if (typeof state.autoUpdating !== "boolean") {
+				log.warn({message: "invalid [autoUpdating] state, using default", state});
+				state.autoUpdating = OLAP.DEFAULT_AUTO_UPDATING;
+				await this.db.collection(this.stateColName).updateOne({_id: "state"}, {$set: {autoUpdating: state.autoUpdating}});
+			}
+			if (typeof state.updateInterval !== "number") {
+				log.warn({message: "invalid [updateInterval] state, using default", state});
+				state.updateInterval = OLAP.DEFAULT_UPDATE_INTERVAL;
+				await this.db.collection(this.stateColName).updateOne({_id: "state"}, {$set: {updateInterval: state.updateInterval}});
 			}
 		} else {
 			log.info({message: "no state, adding"});
-			await this.db.collection(this.stateColName).insertOne({_id: "state", buffering: false, autoUpdating: false, updateInterval: 30000});
+			state = {buffering: true, autoUpdating: true, updateInterval: OLAP.DEFAULT_UPDATE_INTERVAL};
+			await this.db.collection(this.stateColName).insertOne({_id: "state", ...state});
 		}
+
+		if (state.buffering) await this.startOplogBuffering();
+		if (state.autoUpdating) await this.startAutoUpdate(state.updateInterval);
 	}
 
 	async createCube({name, model, principalEntity}) {
@@ -187,7 +198,7 @@ class OLAP {
 		this.updateTimeout = setTimeout(this.updateAggregates.bind(this), this.updateInterval);
 	}
 
-	async startAutoUpdate({interval=30000}) {
+	async startAutoUpdate({interval=OLAP.DEFAULT_UPDATE_INTERVAL}) {
 		this.autoUpdating = true;
 		this.updateInterval = interval;
 
