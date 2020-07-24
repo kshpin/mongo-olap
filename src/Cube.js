@@ -39,7 +39,7 @@ class Cube {
 		this.shadowColName = colName + "_" + name + "_shadow";
 	}
 
-	async initNewCube() {
+	async initNew() {
 		let toShadowProjection = {};
 
 		let groupId = {};
@@ -163,27 +163,25 @@ class Cube {
 		this._buildQueries();
 	}
 
-	async validate() {
+	async load(lastProcessed) {
 		try {
 			await new Promise((res, rej) => this.db.collection(this.shadowColName, {strict: true}, err => {
 				if (err) rej(err);
 				else res();
 			}));
-		} catch (err) {
-			throw new Error("Cube::validate: shadow collection missing");
-		}
-		try {
 			await new Promise((res, rej) => this.db.collection(this.cubeColName, {strict: true}, err => {
-				if (err) rej(err);
-				else res();
-			}));
+					if (err) rej(err);
+					else res();
+				}));
+
+			this._buildQueries();
 		} catch (err) {
-			throw new Error("Cube::validate: cube collection missing");
+			this.db.collection(this.cubeMetaInfoColName).updateOne({_id: this.name}, {$set: {valid: false}});
+			return false;
 		}
 
-		if (!(await this.db.collection(this.cubeMetaInfoColName).find({_id: this.name}).next()).valid) throw new Error("Cube::validate: cube not valid");
-
-		this._buildQueries();
+		this.lastProcessed = lastProcessed;
+		return true;
 	}
 
 	_buildQueries() {

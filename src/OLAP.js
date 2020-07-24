@@ -95,7 +95,7 @@ class OLAP {
 		let colName = model.source.slice(model.source.indexOf(".")+1);
 
 		let cube = new Cube(this.client, this.db, this.cubeMetaInfoColName, colName, name, model, principalEntity);
-		await cube.initNewCube();
+		await cube.initNew();
 
 		if (Object.keys(this.cubes).length === 0) this.oldestOplogTs = cube.lastProcessed;
 
@@ -116,21 +116,29 @@ class OLAP {
 
 		log.debug({stage: "loading cubes"});
 
-		let errors = [];
 		for (const extCube of existingCubes) {
 			if (!extCube.valid) {
 				log.trace({stage: "loading cubes", cube: extCube._id, message: "cube invalid, skipping"});
 				continue;
 			}
 
-			let result = await this._loadCube(extCube._id, extCube.model, extCube.principalEntity, extCube.lastProcessed);
-
-			if (result === 0) log.trace({stage: "loading cubes", cube: extCube._id, message: "loaded successfully"});
-			else if (result === 1) log.trace({stage: "loading cubes", cube: extCube._id, message: "already loaded"});
-			else {
-				log.warn({stage: "loading cubes", cube: extCube._id, error: result});
-				errors.push(result);
+			let colName = extCube.model.source.slice(extCube.model.source.indexOf(".")+1);
+			if (this.cubes[colName] && this.cubes[colName].some(c => c.name === extCube._id)) {
+				log.trace({stage: "loading cubes", cube: extCube._id, message: "already loaded"});
+				continue;
 			}
+
+			let cube = new Cube(this.client, this.db, this.cubeMetaInfoColName, colName, extCube._id, extCube.model, extCube.principalEntity);
+			let result = await cube.load(extCube.lastProcessed);
+
+			if (result) {
+				log.trace({stage: "loading cubes", cube: extCube._id, message: "loaded successfully"});
+
+				if (this.cubes[colName]) this.cubes[colName].push(cube);
+				else this.cubes[colName] = [cube];
+
+				if (this.oldestOplogTs > cube.lastProcessed) this.oldestOplogTs = cube.lastProcessed;
+			} else log.warn({stage: "loading cubes", cube: extCube._id, message: "could not load"});
 		}
 
 		if (this.buffering) {
@@ -138,29 +146,7 @@ class OLAP {
 			await this.startOplogBuffering();
 		}
 
-		return {errors};
-	}
-
-	async _loadCube(name, model, principalEntity, lastProcessed) {
-		let colName = model.source.slice(model.source.indexOf(".")+1);
-		if (this.cubes[colName] && this.cubes[colName].some(c => c.name === name)) return 1;
-
-		let cube = new Cube(this.client, this.db, this.cubeMetaInfoColName, colName, name, model, principalEntity);
-
-		try {
-			await cube.validate();
-		} catch (err) {
-			this.db.collection(this.cubeMetaInfoColName).updateOne({_id: name}, {$set: {valid: false}});
-
-			return "OLAP::_loadCube: could not load cube [" + name + "] for collection [" + colName + "]";
-		}
-
-		if (this.cubes[colName]) this.cubes[colName].push(cube);
-		else this.cubes[colName] = [cube];
-
-		if (this.oldestOplogTs > lastProcessed) this.oldestOplogTs = lastProcessed;
-
-		return 0;
+		return {cubesLoaded: this.listCubes()};
 	}
 
 	listCubes() {
