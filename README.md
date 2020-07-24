@@ -173,4 +173,4 @@ nc.publish("olap_aggregate", {
 This will return how many visits the side had, irrespective of locale, by month.
 
 ## License
-AGPLv3
+MIT
