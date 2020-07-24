@@ -8,16 +8,16 @@ This microservice relies on MongoDB's replication set setting, which allows usin
 [NATS](https://nats.io/) is the only currently supported interface to the OLAP service. Both it and MongoDB must be running, with their respective connection information in the following environment variables (defaults in comments):
 ```javascript
 // mongo
-process.env.DB_URL // "mongodb://localhost:27017/",
-process.env.DB_NAME // "db1",
-process.env.DB_RETRY_INTERVAL // 1000
+DB_URL // "mongodb://localhost:27017/",
+DB_NAME // "db1",
+DB_RETRY_INTERVAL // 1000
 
 // nats
-process.env.NATS_URL // "nats://localhost:4222/",
-process.env.NATS_PING_INTERVAL // 10000
+NATS_URL // "nats://localhost:4222/",
+NATS_PING_INTERVAL // 10000
 
 // logger
-process.env.LOGGER_LEVEL // "info"
+LOGGER_LEVEL // "info"
 ```
 
 ## Model
@@ -70,10 +70,16 @@ let olap = new OLAP(mongoClient, db, "olap_state", "olap_config");
 // use olap as needed
 ```
 
-NATS API (all parameters are single stringified JSON objects):
+### NATS
+The main two requests are for creating a cube and aggregating it:
 | Publish topic | Parameters |
 | --- | --- |
 | `"olap_createCube"`<br>creates a cube | name - name of the cube<br>model - cube model<br>principalEntity - the logical entity representing what the cube is aggregating |
+| `"olap_aggregate"`<br>aggregates the cube | colName - name of collection on which the cube is based<br>cubeName - name of cube<br>measures - measures to include in aggregation<br>dimensions - dimensions to keep separate in aggregation<br>filters - filters for including documents in aggregation |
+
+All other requests are optional and rarely used:
+| Publish topic | Parameters |
+| --- | --- |
 | `"olap_loadCubes"`<br>loads cubes from configuration | |
 | `"olap_listCubes"`<br>lists loaded cubes | |
 | `"olap_deleteCube"`<br>deletes a cube | colName - name of the collection on which the cube is based<br>cubeName - name of the cube to delete|
@@ -82,7 +88,6 @@ NATS API (all parameters are single stringified JSON objects):
 | `"olap_startOplogBuffering"`<br>begins buffering oplogs, speeding up the update process (off by default, but highly recommended) | |
 | `"olap_stopOplogBuffering"`<br>stops buffering oplogs | |
 | `"olap_updateAggregates"`<br>updates aggregates once | |
-| `"olap_aggregate"`<br>aggregates the cube | colName - name of collection on which the cube is based<br>cubeName - name of cube<br>measures - measures to include in aggregation<br>dimensions - dimensions to keep separate in aggregation<br>filters - filters for including documents in aggregation |
 
 ## Usage examples
 Let's first create a Cube. The source collection stores information about website visits.
@@ -167,4 +172,5 @@ nc.publish("olap_aggregate", {
 ```
 This will return how many visits the side had, irrespective of locale, by month.
 
-License: AGPLv3
+## License
+AGPLv3
