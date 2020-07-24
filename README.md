@@ -1,9 +1,9 @@
 # Mongo-OLAP
-A MongoDB OLAP microservice for continuous pre-aggregation.
+An OLAP service for MongoDB with low aggregation times.
 
-By defining a particular model for future aggregation requests, a lot of the information in the database may be aggregated to its maximum without losing information in terms of the model. This may speed up the aggregation process by several orders of magnitude, for a well chosen model.
+By defining a particular model for future aggregation requests, a lot of the information in the database may be aggregated to its maximum without losing information in terms of the model. This may speed up the aggregation process by several orders of magnitude, for a well chosen model. The only currently supported aggregation operation is `sum`, but more are on the way (`product`, `standardDeviation`, `min`, `max`).
 
-This microservice relies on MongoDB's replication set setting, which allows using its `oplogs` to keep track of changes to the database, and thus keep the pre-aggregates up to date. To enable this, run `rs.initiate()` in MongoDB's shell.
+This service relies on MongoDB's replication set setting, which allows using its `oplogs` to keep track of changes to the database, and thus keep the pre-aggregates up to date. To enable this, run `rs.initiate()` in MongoDB's shell.
 
 [NATS](https://nats.io/) is the only currently supported interface to the OLAP service. Both it and MongoDB must be running, with their respective connection information in the following environment variables (defaults in comments):
 ```javascript
@@ -45,7 +45,7 @@ model: {
     {
       path: "times.lastStatusAt",
       id: "lastStatusAt",
-      type: "time",
+      type: "time", // only used for "time"
       timeFormat: "ms", // the value is expected to represent the number of milliseconds since 1 January 1970 UTC
       granularity: "hour" // since time values are usually unique, a granularity is necessary for effective aggregation
                           // possible values: "hour", "day", "month", "year"
@@ -83,14 +83,14 @@ All other requests are optional and rarely used:
 | `"olap_loadCubes"`<br>loads cubes from configuration | |
 | `"olap_listCubes"`<br>lists loaded cubes | |
 | `"olap_deleteCube"`<br>deletes a cube | colName - name of the collection on which the cube is based<br>cubeName - name of the cube to delete|
-| `"olap_startAutoUpdate"`<br>begins auto updating the aggregates at an interval (off by default) | interval - number of milliseconds between updates (default 30000) |
+| `"olap_startAutoUpdate"`<br>begins auto updating the aggregates at an interval (on by default) | interval - number of milliseconds between updates (default 30000) |
 | `"olap_stopAutoUpdate"`<br>stops auto updating | |
-| `"olap_startOplogBuffering"`<br>begins buffering oplogs, speeding up the update process (off by default, but highly recommended) | |
+| `"olap_startOplogBuffering"`<br>begins buffering oplogs, speeding up the update process (on by default) | |
 | `"olap_stopOplogBuffering"`<br>stops buffering oplogs | |
 | `"olap_updateAggregates"`<br>updates aggregates once | |
 
 ## Usage examples
-Let's first create a Cube. The source collection stores information about website visits.
+First create a Cube. The source collection stores information about website visits.
 ```javascript
 nc.publish("olap_createCube", {
   name: "siteVisits",
@@ -119,17 +119,7 @@ nc.publish("olap_createCube", {
   principalEntity: "visit" // this doesn't impact aggregation, but keeping this in mind when choosing a model is important for coherency of aggregation results
 });
 ```
-Cube creation is the most computationally expensive step in the whole process, expect for it to take some time. Now the system is tracking changes to the source collection, but each update will take a long time if the changes aren't buffered.
-```javascript
-nc.publish("olap_startOplogBuffering", {});
-```
-Each time an aggregation request is received, the changes are processed automatically. However, it's a good idea to enable periodic updates to reduce response time when you need it most.
-```javascript
-nc.publish("olap_startAutoUpdate", {
-  interval: 30000 // milliseconds
-});
-```
-Now we can make an aggregation request.
+Now that the cube exists, we can already make 
 ```javascript
 nc.publish("olap_aggregate", {
   colName: "col1",
