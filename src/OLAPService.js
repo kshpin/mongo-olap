@@ -146,7 +146,7 @@ async function startService() {
 		await olap.loadState();
 		await olap.loadCubes();
 
-		subscribeCodes = API.map(func => nc.subscribe(`${config.nats.prefix}_olap_${func}`, (msg, reply) => natsResponse(msg, reply, olap[func])));
+		subscribeCodes = API.map(func => nc.subscribe(`olap_${config.nats.prefix}_${func}`, (msg, reply) => natsResponse(msg, reply, olap[func])));
 	});
 
 	// nats request handle ---------------------------------------------------------------------------------------------
