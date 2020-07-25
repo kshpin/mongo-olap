@@ -14,7 +14,10 @@ This service relies on MongoDB's replication set setting, which allows using its
 | `DB_RETRY_INTERVAL` | `1000` | Millisecond interval to try connecting to MongoDB again (only for first connection, disconnecting after a successful connection results in a fatal error) |
 | `NATS_URL` | `nats://localhost:4222/` | The url through which to connect to NATS |
 | `NATS_PING_INTERVAL` | `10000` | Millisecond interval between checkAlive pings to NATS |
-| `LOGGER_LEVEL` | `info` | Logger level (possible options: `fatal`, `error`, `warn`, `info`, `debug`, `trace`) |
+| `NATS_PREFIX` | `main` | Prefix to the olap publish topic, to prevent collisions in case of multiple instances running<br>Format: `olap_[prefix]_[command]` |
+| `LOG_LEVEL` | `info` | Logger level (possible options: `fatal`, `error`, `warn`, `info`, `debug`, `trace`) |
+| `LOG_DEST` | `console` | Where the logs are to be printed (possible options: `console`, `file`) |
+| `LOG_FILEPATH` | `mongo-olap.log` | If `LOG_DEST` is set to `file`, the filepath to which the logs are to be written |
 
 MongoDB version: `3.5.5` or higher.
 NATS version: `1.4.8` or higher.
@@ -70,19 +73,21 @@ let olap = new OLAP(mongoClient, db, "olap_state", "olap_config");
 ```
 
 ### NATS
+All parameters are properties of an object in JSON format, stringified.
+
 The main two requests are for creating a cube and aggregating it:
 | Publish topic | Parameters |
 | --- | --- |
-| `"olap_createCube"`<br>creates a cube | name - name of the cube<br>model - cube model<br>principalEntity - the logical entity representing what the cube is aggregating |
-| `"olap_aggregate"`<br>aggregates the cube | colName - name of collection on which the cube is based<br>cubeName - name of cube<br>measures - measures to include in aggregation<br>dimensions - dimensions to keep separate in aggregation<br>filters - filters for including documents in aggregation |
+| `"olap_createCube"`<br>creates a cube | `name` - name of the cube<br>`model` - cube model<br>`principalEntity` - the logical entity representing what the cube is aggregating |
+| `"olap_aggregate"`<br>aggregates the cube | `colName` - name of collection on which the cube is based<br>`cubeName` - name of cube<br>`measures` - measures to include in aggregation<br>`dimensions` - dimensions to keep separate in aggregation<br>`filters` - filters for including documents in aggregation |
 
 All other requests are optional and rarely used:
 | Publish topic | Parameters |
 | --- | --- |
 | `"olap_loadCubes"`<br>loads cubes from configuration | |
 | `"olap_listCubes"`<br>lists loaded cubes | |
-| `"olap_deleteCube"`<br>deletes a cube | colName - name of the collection on which the cube is based<br>cubeName - name of the cube to delete|
-| `"olap_startAutoUpdate"`<br>begins auto updating the aggregates at an interval (on by default) | interval - number of milliseconds between updates (default 30000) |
+| `"olap_deleteCube"`<br>deletes a cube | `colName` - name of the collection on which the cube is based<br>`cubeName` - name of the cube to delete |
+| `"olap_startAutoUpdate"`<br>begins auto updating the aggregates at an interval (on by default) | `interval` - number of milliseconds between updates (default 30000) |
 | `"olap_stopAutoUpdate"`<br>stops auto updating | |
 | `"olap_startOplogBuffering"`<br>begins buffering oplogs, speeding up the update process (on by default) | |
 | `"olap_stopOplogBuffering"`<br>stops buffering oplogs | |
@@ -91,7 +96,7 @@ All other requests are optional and rarely used:
 ## Usage examples
 First create a Cube. The source collection stores information about website visits.
 ```javascript
-nc.publish("olap_createCube", {
+nc.publish("olap_main_createCube", {
   name: "siteVisits",
   model: {
     source: "db1.col1", // this is the collection from which information is taken
@@ -120,7 +125,7 @@ nc.publish("olap_createCube", {
 ```
 Once the cube is created, we can already make aggregation requests:
 ```javascript
-nc.publish("olap_aggregate", {
+nc.publish("olap_main_aggregate", {
   colName: "col1",
   cubeName: "siteVisits", // the same collection may have several cubes optimized for different models
   dimensions: [ // include all the dimensions that need to be differentiated, all others will be collapsed
@@ -147,7 +152,7 @@ This will return how many visits the site had, and the total visit time, by loca
 
 We can also aggregate by the time field:
 ```javascript
-nc.publish("olap_aggregate", {
+nc.publish("olap_main_aggregate", {
   colName: "col1",
   cubeName: "siteVisits",
   dimensions: [
