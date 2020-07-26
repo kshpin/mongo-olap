@@ -7,7 +7,7 @@ module.exports = {
 	nats: {
 		url:				 process.env.NATS_URL					|| "nats://localhost:4222/",
 		pingInterval:		+process.env.NATS_PING_INTERVAL			|| 10000,
-		prefix:				 process.env.NATS_PREFIX				|| "main"
+		prefix:				 process.env.NATS_PREFIX				|| "olap"
 	},
 	logger: {
 		level:				 process.env.LOG_LEVEL					|| "info",
