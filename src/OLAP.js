@@ -160,10 +160,10 @@ class OLAP {
 	}
 
 	async deleteCube({colName, cubeName}) {
-		if (!this.cubes.hasOwnProperty(colName)) throw new Error("OLAP::deleteCube: no cubes for collection [" + colName + "]");
+		if (!this.cubes.hasOwnProperty(colName)) throw new Error("no cubes for collection [" + colName + "]");
 
 		let cubeIdx = this.cubes[colName].findIndex(cube => cube.name === cubeName);
-		if (cubeIdx === -1) throw new Error("OLAP::deleteCube: no cube [" + cubeName + "] for collection [" + colName + "]");
+		if (cubeIdx === -1) throw new Error("no cube [" + cubeName + "] for collection [" + colName + "]");
 		let cube = this.cubes[colName][cubeIdx];
 
 		await this.db.collection(cube.cubeColName).drop();
