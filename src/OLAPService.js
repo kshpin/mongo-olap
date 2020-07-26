@@ -118,14 +118,11 @@ async function startService() {
 	log.debug({stage: `Connecting to NATS at [${config.nats.url}]`});
 
 	nc = NATS.connect({ // TODO add other authorization methods
-		url: config.nats.url,
-		//user: "foo",
-		//pass: "bar",
 		json: true,
 		maxPingOut: 1,
 		maxReconnectAttempts: -1,
-		pingInterval: config.nats.pingInterval,
-		waitOnFirstConnect: true
+		waitOnFirstConnect: true,
+		...config.nats.connection
 	});
 
 	nc.on("error", err => {
