@@ -264,7 +264,7 @@ class OLAP {
 
 		let namespaces = this._getNamespaces();
 		let oplogsByNamespace = {};
-		let lastOplogTs = Timestamp(0, 0);
+		let lastOplogTs = this.oldestOplogTs;
 		namespaces.forEach(ns => {
 			oplogsByNamespace[ns] = oplogs.filter(oplog => {
 				if (lastOplogTs.compare(oplog.ts) < 0) lastOplogTs = oplog.ts;
