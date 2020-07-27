@@ -92,9 +92,7 @@ class OLAP {
 	}
 
 	async createCube({name, model, principalEntity}) {
-		let colName = model.source.slice(model.source.indexOf(".")+1);
-
-		let cube = new Cube(this.client, this.db, this.cubeMetaInfoColName, colName, name, model, principalEntity);
+		let cube = new Cube(this.client, this.db, this.cubeMetaInfoColName, name, model, principalEntity);
 		await cube.initNew();
 
 		if (this.cubes.length === 0) this.oldestOplogTs = cube.lastProcessed;
@@ -121,13 +119,12 @@ class OLAP {
 				continue;
 			}
 
-			let colName = extCube.model.source.slice(extCube.model.source.indexOf(".")+1);
 			if (this.cubes.some(c => c.name === extCube._id)) {
 				log.trace({stage: "loading cubes", cube: extCube._id, message: "already loaded"});
 				continue;
 			}
 
-			let cube = new Cube(this.client, this.db, this.cubeMetaInfoColName, colName, extCube._id, extCube.model, extCube.principalEntity);
+			let cube = new Cube(this.client, this.db, this.cubeMetaInfoColName, extCube._id, extCube.model, extCube.principalEntity);
 			let result = await cube.load(extCube.lastProcessed);
 
 			if (result) {
@@ -166,7 +163,7 @@ class OLAP {
 		this.cubes.splice(cubeIdx, 1);
 	}
 
-	_getNameSpaces() {
+	_getNamespaces() {
 		return [...new Set(this.cubes.map(cube => `${this.db.databaseName}.${cube.model.source}`))];
 	}
 
@@ -195,7 +192,7 @@ class OLAP {
 		await this.stopOplogBuffering({});
 
 		this.oplogStream = this.client.db("local").collection("oplog.rs").find({
-			ns: {$in: this._getNameSpaces()},
+			ns: {$in: this._getNamespaces()},
 			ts: {$gt: this.oldestOplogTs},
 			op: {$in: ["i", "u", "d"]},
 			$or: [{o: {$exists: 1}}, {o2: {$exists: 1}}]
@@ -247,7 +244,7 @@ class OLAP {
 			oplogs = this.oplogBuffer;
 			this.oplogBuffer = [];
 		} else oplogs = await this.client.db("local").collection("oplog.rs").find({
-			ns: {$in: this._getNameSpaces()},
+			ns: {$in: this._getNamespaces()},
 			ts: {$gt: this.oldestOplogTs},
 			op: {$in: ["i", "u", "d"]},
 			$or: [{o: {$exists: 1}}, {o2: {$exists: 1}}]
@@ -265,7 +262,7 @@ class OLAP {
 
 		log.debug({stage: "filtering oplogs"});
 
-		let namespaces = this._getNameSpaces();
+		let namespaces = this._getNamespaces();
 		let oplogsByNamespace = {};
 		let lastOplogTs = Timestamp(0, 0);
 		namespaces.forEach(ns => {

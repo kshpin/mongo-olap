@@ -24,7 +24,7 @@ class Cube {
 	cubeColName;
 	shadowColName;
 
-	constructor(client, db, configColName, colName, name, model, principalEntity) {
+	constructor(client, db, configColName, name, model, principalEntity) {
 		this.client = client;
 		this.db = db;
 		this.model = model;
@@ -34,9 +34,9 @@ class Cube {
 
 		this.cubeMetaInfoColName = configColName;
 
-		this.dataColName = colName;
-		this.cubeColName = `olap_${colName}_${name}_cube`;
-		this.shadowColName = `olap_${colName}_${name}_shadow`;
+		this.dataColName = model.source;
+		this.cubeColName = `olap_${model.source}_${name}_cube`;
+		this.shadowColName = `olap_${model.source}_${name}_shadow`;
 	}
 
 	async initNew() {
