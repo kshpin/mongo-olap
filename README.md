@@ -86,14 +86,14 @@ The main two requests are for creating a cube and aggregating it:
 | Publish topic | Parameters |
 | --- | --- |
 | `"olap_createCube"`<br>creates a cube | `name` - name of the cube<br>`model` - cube model<br>`principalEntity` - the logical entity representing what the cube is aggregating |
-| `"olap_aggregate"`<br>aggregates the cube | `colName` - name of collection on which the cube is based<br>`cubeName` - name of cube<br>`measures` - measures to include in aggregation<br>`dimensions` - dimensions to keep separate in aggregation<br>`filters` - filters for including documents in aggregation |
+| `"olap_aggregate"`<br>aggregates the cube | `cubeName` - name of cube<br>`measures` - measures to include in aggregation<br>`dimensions` - dimensions to keep separate in aggregation<br>`filters` - filters for including documents in aggregation |
 
 All other requests are optional and rarely used:
 | Publish topic | Parameters |
 | --- | --- |
 | `"olap_loadCubes"`<br>loads cubes from configuration | |
 | `"olap_listCubes"`<br>lists loaded cubes | |
-| `"olap_deleteCube"`<br>deletes a cube | `colName` - name of the collection on which the cube is based<br>`cubeName` - name of the cube to delete |
+| `"olap_deleteCube"`<br>deletes a cube | `cubeName` - name of the cube to delete |
 | `"olap_startAutoUpdate"`<br>begins auto updating the aggregates at an interval (on by default) | `interval` - number of milliseconds between updates (default 30000) |
 | `"olap_stopAutoUpdate"`<br>stops auto updating | |
 | `"olap_startOplogBuffering"`<br>begins buffering oplogs, speeding up the update process (on by default) | |
