@@ -13,9 +13,9 @@ This service relies on MongoDB's replication set setting, which allows using its
 | `DB_NAME` | `db` | The database name within MongoDB to use as the data source |
 | `DB_RETRY_INTERVAL` | `1000` | Millisecond interval to try connecting to MongoDB again (only for first connection, disconnecting after a successful connection results in a fatal error) |
 | `NATS_URL` | `nats://localhost:4222/` | The url through which to connect to NATS, including port |
-| `NATS_USER` | | NATS username for authorization |
-| `NATS_PASS` | | NATS password for authorization |
-| `NATS_TOKEN` | | NATS token for authorization (mutually exclusive with user/pass) |
+| `NATS_AUTH_USER` | | NATS username for authorization |
+| `NATS_AUTH_PASS` | | NATS password for authorization |
+| `NATS_AUTH_TOKEN` | | NATS token for authorization (mutually exclusive with user/pass) |
 | `NATS_TLS_CA` | | NATS TLS CA file path |
 | `NATS_TLS_KEY` | | NATS TLS key file path |
 | `NATS_TLS_CERT` | | NATS TLS certificate file path |
@@ -86,14 +86,14 @@ The main two requests are for creating a cube and aggregating it:
 | Publish topic | Parameters |
 | --- | --- |
 | `"olap_createCube"`<br>creates a cube | `name` - name of the cube<br>`model` - cube model<br>`principalEntity` - the logical entity representing what the cube is aggregating |
-| `"olap_aggregate"`<br>aggregates the cube | `colName` - name of collection on which the cube is based<br>`cubeName` - name of cube<br>`measures` - measures to include in aggregation<br>`dimensions` - dimensions to keep separate in aggregation<br>`filters` - filters for including documents in aggregation |
+| `"olap_aggregate"`<br>aggregates the cube | `cubeName` - name of cube<br>`measures` - measures to include in aggregation<br>`dimensions` - dimensions to keep separate in aggregation<br>`filters` - filters for including documents in aggregation |
 
 All other requests are optional and rarely used:
 | Publish topic | Parameters |
 | --- | --- |
 | `"olap_loadCubes"`<br>loads cubes from configuration | |
 | `"olap_listCubes"`<br>lists loaded cubes | |
-| `"olap_deleteCube"`<br>deletes a cube | `colName` - name of the collection on which the cube is based<br>`cubeName` - name of the cube to delete |
+| `"olap_deleteCube"`<br>deletes a cube | `cubeName` - name of the cube to delete |
 | `"olap_startAutoUpdate"`<br>begins auto updating the aggregates at an interval (on by default) | `interval` - number of milliseconds between updates (default 30000) |
 | `"olap_stopAutoUpdate"`<br>stops auto updating | |
 | `"olap_startOplogBuffering"`<br>begins buffering oplogs, speeding up the update process (on by default) | |
