@@ -6,6 +6,7 @@ const logger = require("./logs/logger").child({
 });
 
 let config = require("./config");
+let {InvalidRequestError} = require("./Validation");
 
 const API = [
 	"createCube",
@@ -183,6 +184,7 @@ async function startService() {
 		try {
 			return {response: await func.apply(olap, [params]), success: true};
 		} catch (err) {
+			if (err instanceof InvalidRequestError) return {response: err.message, errors: err.errors, success: false};
 			return {response: err.message, success: false};
 		}
 	};
