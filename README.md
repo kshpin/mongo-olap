@@ -10,7 +10,7 @@ This service relies on MongoDB's replication set setting, which allows using its
 | Environment variable | Default value | Meaning |
 | --- | --- | --- |
 | `DB_URL` | `mongodb://localhost:27017/` | The url through which to connect to MongoDB |
-| `DB_NAME` | `db1` | The database name within MongoDB to use as the data source |
+| `DB_NAME` | `db` | The database name within MongoDB to use as the data source |
 | `DB_RETRY_INTERVAL` | `1000` | Millisecond interval to try connecting to MongoDB again (only for first connection, disconnecting after a successful connection results in a fatal error) |
 | `NATS_URL` | `nats://localhost:4222/` | The url through which to connect to NATS, including port |
 | `NATS_USER` | | NATS username for authorization |
@@ -106,7 +106,7 @@ First create a Cube. The source collection stores information about website visi
 nc.publish("olap_main_createCube", {
   name: "siteVisits",
   model: {
-    source: "db1.col1", // this is the collection from which information is taken
+    source: "db.col1", // this is the collection from which information is taken
     dimensions: [
       {
         path: "locale",
