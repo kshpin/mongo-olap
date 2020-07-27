@@ -115,7 +115,7 @@ async function startService() {
 
 	let connected = false;
 
-	log.debug({stage: `Connecting to NATS at [${config.nats.url}]`});
+	log.debug({stage: `Connecting to NATS at [${config.nats.connection.url}]`});
 
 	nc = NATS.connect({ // TODO add other authorization methods
 		json: true,
