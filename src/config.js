@@ -12,7 +12,7 @@ const removeEmpty = (obj) => {
 let config = {
 	mongo: {
 		url:					 process.env.DB_URL						|| "mongodb://localhost:27017/",
-		dbName:					 process.env.DB_NAME					|| "db1",
+		dbName:					 process.env.DB_NAME					|| "db",
 		retryInterval:			+process.env.DB_RETRY_INTERVAL			|| 1000
 	},
 	nats: {
