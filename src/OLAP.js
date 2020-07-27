@@ -8,7 +8,7 @@ const Cube = require("./Cube");
 
 class OLAP {
 
-	static DEFAULT_BUFFERING= true;
+	static DEFAULT_BUFFERING = true;
 	static DEFAULT_AUTO_UPDATING = true;
 	static DEFAULT_UPDATE_INTERVAL = 30000;
 
@@ -35,7 +35,7 @@ class OLAP {
 	constructor(client, db, stateColName, cubeInfoColName) {
 		this.client = client;
 		this.db = db;
-		this.cubes = {};
+		this.cubes = [];
 
 		this.oplogBuffer = [];
 
@@ -97,10 +97,9 @@ class OLAP {
 		let cube = new Cube(this.client, this.db, this.cubeMetaInfoColName, colName, name, model, principalEntity);
 		await cube.initNew();
 
-		if (Object.keys(this.cubes).length === 0) this.oldestOplogTs = cube.lastProcessed;
+		if (this.cubes.length === 0) this.oldestOplogTs = cube.lastProcessed;
 
-		if (this.cubes[colName]) this.cubes[colName].push(cube);
-		else this.cubes[colName] = [cube];
+		this.cubes.push(cube);
 
 		if (this.buffering) await this.startOplogBuffering();
 	}
@@ -123,7 +122,7 @@ class OLAP {
 			}
 
 			let colName = extCube.model.source.slice(extCube.model.source.indexOf(".")+1);
-			if (this.cubes[colName] && this.cubes[colName].some(c => c.name === extCube._id)) {
+			if (this.cubes.some(c => c.name === extCube._id)) {
 				log.trace({stage: "loading cubes", cube: extCube._id, message: "already loaded"});
 				continue;
 			}
@@ -134,8 +133,7 @@ class OLAP {
 			if (result) {
 				log.trace({stage: "loading cubes", cube: extCube._id, message: "loaded successfully"});
 
-				if (this.cubes[colName]) this.cubes[colName].push(cube);
-				else this.cubes[colName] = [cube];
+				this.cubes.push(cube);
 
 				if (this.oldestOplogTs > cube.lastProcessed) this.oldestOplogTs = cube.lastProcessed;
 			} else log.warn({stage: "loading cubes", cube: extCube._id, message: "could not load"});
@@ -150,31 +148,26 @@ class OLAP {
 	}
 
 	listCubes() {
-		return Object.entries(this.cubes).map(([col, cubes]) => ({
-			collection: col,
-			cubes: cubes.map(cube => ({
-				name: cube.name,
-				principalEntity: cube.principalEntity
-			}))
+		return this.cubes.map(cube => ({
+			collection: cube.dataColName,
+			cube: cube.name
 		}));
 	}
 
-	async deleteCube({colName, cubeName}) {
-		if (!this.cubes.hasOwnProperty(colName)) throw new Error("no cubes for collection [" + colName + "]");
-
-		let cubeIdx = this.cubes[colName].findIndex(cube => cube.name === cubeName);
-		if (cubeIdx === -1) throw new Error("no cube [" + cubeName + "] for collection [" + colName + "]");
-		let cube = this.cubes[colName][cubeIdx];
+	async deleteCube({cubeName}) {
+		let cubeIdx = this.cubes.findIndex(cube => cube.name === cubeName);
+		if (cubeIdx === -1) throw new Error("no cube [" + cubeName + "]");
+		let cube = this.cubes[cubeIdx];
 
 		await this.db.collection(cube.cubeColName).drop();
 		await this.db.collection(cube.shadowColName).drop();
 		await this.db.collection(this.cubeMetaInfoColName).deleteOne({_id: cube.name});
 
-		this.cubes[colName].splice(cubeIdx, 1);
+		this.cubes.splice(cubeIdx, 1);
 	}
 
 	_getNameSpaces() {
-		return Object.values(this.cubes).reduce((accumulator, cubes) => [...accumulator, ...cubes.map(cube => cube.model.source)], []);
+		return [...new Set(this.cubes.map(cube => cube.model.source))];
 	}
 
 	_queueUpdate() {
@@ -272,11 +265,11 @@ class OLAP {
 
 		log.debug({stage: "filtering oplogs"});
 
-		let oplogsByCol = {};
+		let namespaces = this._getNameSpaces();
+		let oplogsByNamespace = {};
 		let lastOplogTs = Timestamp(0, 0);
-		Object.keys(this.cubes).forEach(colName => {
-			let ns = this.db.databaseName + "." + colName;
-			oplogsByCol[colName] = oplogs.filter(oplog => {
+		namespaces.forEach(ns => {
+			oplogsByNamespace[ns] = oplogs.filter(oplog => {
 				if (lastOplogTs.compare(oplog.ts) < 0) lastOplogTs = oplog.ts;
 				return oplog.ns === ns;
 			}).map(oplog => {
@@ -285,14 +278,12 @@ class OLAP {
 			});
 		});
 
-		let affectedCols = Object.keys(oplogsByCol);
-
 		log.debug({stage: "updating aggregates"});
 
-		for (let col of affectedCols) {
-			for (let curCube of this.cubes[col]) {
+		for (let ns of namespaces) {
+			for (let curCube of this.cubes) {
 				log.trace({stage: "updating aggregates", cube: curCube.name});
-				await curCube.processOplogs(oplogsByCol[col], lastOplogTs);
+				await curCube.processOplogs(oplogsByNamespace[ns], lastOplogTs);
 			}
 		}
 
@@ -304,23 +295,19 @@ class OLAP {
 		this.finishEmitter.emit("done");
 	}
 
-	async aggregate({colName, cubeName, measures, dimensions, filters, dateReturnFormat="ms"}) {
+	async aggregate({cubeName, measures, dimensions, filters, dateReturnFormat="ms"}) {
 		let log = logger.child({
 			func: "aggregate"
 		});
 
 		log.debug({stage: "entered function"});
 
-		if (!this.cubes.hasOwnProperty(colName)) throw new Error("OLAP::getAggregates: no cubes for collection [" + colName + "]");
-
 		await this.updateAggregates();
 
-		let cube = this.cubes[colName].find(cube => cube.name === cubeName);
-		if (!cube) throw new Error("OLAP::getAggregates: no cube [" + cubeName + "] for collection [" + colName + "]");
+		let cube = this.cubes.find(cube => cube.name === cubeName);
+		if (!cube) throw new Error("no cube [" + cubeName + "]");
 
-		log.debug({
-			message: "arguments valid so far"
-		});
+		log.debug({message: "arguments valid so far"});
 
 		return await cube.getAggregates(measures, dimensions, filters, dateReturnFormat);
 	}

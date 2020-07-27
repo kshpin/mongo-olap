@@ -115,9 +115,9 @@ async function startService() {
 
 	let connected = false;
 
-	log.debug({stage: `Connecting to NATS at [${config.nats.url}]`});
+	log.debug({stage: `Connecting to NATS at [${config.nats.connection.url}]`});
 
-	nc = NATS.connect({ // TODO add other authorization methods
+	nc = NATS.connect({
 		json: true,
 		maxPingOut: 1,
 		maxReconnectAttempts: -1,
@@ -188,7 +188,7 @@ async function startService() {
 	};
 }
 
-async function connectDb(url, dbName) {
+async function connectDb(url, dbName) { // TODO add more authorization methods
 	let mongoClient = await MongoClient.connect(url);
 	let db = mongoClient.db(dbName);
 	return [mongoClient, db];
