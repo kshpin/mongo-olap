@@ -91,9 +91,9 @@ class OLAP {
 		if (state.autoUpdating) await this.startAutoUpdate(state.updateInterval);
 	}
 
-	async createCube({name, model, principalEntity}) {
+	async createCube({name, model, principalEntity, guaranteeZero}) {
 		let cube = new Cube(this.client, this.db, this.cubeMetaInfoColName, name, model, principalEntity);
-		await cube.initNew();
+		await cube.initNew(guaranteeZero);
 
 		if (this.cubes.length === 0) this.oldestOplogTs = cube.lastProcessed;
 

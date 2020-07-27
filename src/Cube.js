@@ -39,7 +39,7 @@ class Cube {
 		this.shadowColName = `olap_${model.source}_${name}_shadow`;
 	}
 
-	async initNew() {
+	async initNew(guaranteeZero) {
 		let toShadowProjection = {};
 
 		let groupId = {};
@@ -136,14 +136,19 @@ class Cube {
 			if (await this.db.listCollections({name: this.shadowColName}).hasNext()) await this.db.collection(this.shadowColName).drop();
 			if (await this.db.listCollections({name: this.cubeColName}).hasNext()) await this.db.collection(this.cubeColName).drop();
 
-			await this.db.collection(this.dataColName).aggregate(toShadowAggregationQuery, {allowDiskUse: true}).next();
-			await this.db.collection(this.shadowColName).aggregate(toCubeAggregationQuery, {allowDiskUse: true}).next();
+			if (guaranteeZero) {
+				await this.db.createCollection(this.shadowColName);
+				await this.db.createCollection(this.cubeColName);
+			} else {
+				await this.db.collection(this.dataColName).aggregate(toShadowAggregationQuery, {allowDiskUse: true}).next();
+				await this.db.collection(this.shadowColName).aggregate(toCubeAggregationQuery, {allowDiskUse: true}).next();
+			}
 
 			await this.db.createCollection(this.cubeMetaInfoColName);
 			await this.db.collection(this.cubeMetaInfoColName).deleteMany({model: this.model}, {session});
 			await this.db.collection(this.cubeMetaInfoColName).insertOne({_id: this.name, model: this.model, lastProcessed: this.lastProcessed, valid: true}, {session});
 
-			await this.db.collection(this.cubeColName).createIndex(indexKeys, {unique: true});
+			await this.db.collection(this.cubeColName).createIndex(indexKeys, {unique: true, sparse: true});
 			let keys = Object.keys(indexKeys);
 			if (keys.length > 1) {
 				for (let key of keys) {
