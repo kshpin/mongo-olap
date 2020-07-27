@@ -41,9 +41,9 @@ let config = {
 removeEmpty(config);
 
 if (config.nats.tls) {
-	Object.entries(config.nats.tls).forEach(([key, val]) => {
-		config.nats.tls[key] = [fs.readFileSync(val)];
-	});
+	if (config.nats.tls.ca)		config.nats.tls.ca =	[fs.readFileSync(config.nats.tls.ca)];
+	if (config.nats.tls.key)	config.nats.tls.key =	[fs.readFileSync(config.nats.tls.key)];
+	if (config.nats.tls.cert)	config.nats.tls.cert  =	[fs.readFileSync(config.nats.tls.cert)];
 }
 
 module.exports = config;
