@@ -3,7 +3,7 @@ version: "2"
 services:
   olap:
     container_name: olap
-    image: kirill/cube2
+    image: kshpin/mongo-olap
     environment:
       - "DB_URL=mongodb://mongo:27017/"
       - "NATS_URL=nats://nats:4222/"
