@@ -40,10 +40,10 @@ let config = {
 
 removeEmpty(config);
 
-if (config.nats.tls) {
-	if (config.nats.tls.ca)		config.nats.tls.ca =	[fs.readFileSync(config.nats.tls.ca)];
-	if (config.nats.tls.key)	config.nats.tls.key =	[fs.readFileSync(config.nats.tls.key)];
-	if (config.nats.tls.cert)	config.nats.tls.cert  =	[fs.readFileSync(config.nats.tls.cert)];
+if (config.nats.connection.tls) {
+	["ca", "key", "cert"].forEach(field => {
+		if (config.nats.connection.tls[field]) config.nats.connection.tls[field] = fs.readFileSync(config.nats.connection.tls[field]);
+	});
 }
 
 module.exports = config;
