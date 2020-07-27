@@ -13,12 +13,13 @@ This service relies on MongoDB's replication set setting, which allows using its
 | `DB_NAME` | `db1` | The database name within MongoDB to use as the data source |
 | `DB_RETRY_INTERVAL` | `1000` | Millisecond interval to try connecting to MongoDB again (only for first connection, disconnecting after a successful connection results in a fatal error) |
 | `NATS_URL` | `nats://localhost:4222/` | The url through which to connect to NATS, including port |
-| `NATS_USER` | N/A | NATS username for authorization |
-| `NATS_PASS` | N/A | NATS password for authorization |
-| `NATS_TOKEN` | N/A | NATS token for authorization (mutually exclusive with user/pass) |
-| `NATS_TLS_CA` | N/A | NATS TLS CA file path |
-| `NATS_TLS_KEY` | N/A | NATS TLS key file path |
-| `NATS_TLS_CERT` | N/A | NATS TLS certificate file path |
+| `NATS_USER` | | NATS username for authorization |
+| `NATS_PASS` | | NATS password for authorization |
+| `NATS_TOKEN` | | NATS token for authorization (mutually exclusive with user/pass) |
+| `NATS_TLS_CA` | | NATS TLS CA file path |
+| `NATS_TLS_KEY` | | NATS TLS key file path |
+| `NATS_TLS_CERT` | | NATS TLS certificate file path |
+| `NATS_TLS_SERVERNAME` | | NATS TLS server name |
 | `NATS_PING_INTERVAL` | `10000` | Millisecond interval between checkAlive pings to NATS |
 | `NATS_PREFIX` | `olap` | Prefix to the olap publish topic, to prevent collisions in case of multiple instances running<br>Format: `[prefix].[command]` |
 | `LOG_LEVEL` | `info` | Logger level (possible options: `fatal`, `error`, `warn`, `info`, `debug`, `trace`) |
