@@ -167,7 +167,7 @@ class OLAP {
 	}
 
 	_getNameSpaces() {
-		return [...new Set(this.cubes.map(cube => cube.model.source))];
+		return [...new Set(this.cubes.map(cube => `${this.db.databaseName}.${cube.model.source}`))];
 	}
 
 	_queueUpdate() {

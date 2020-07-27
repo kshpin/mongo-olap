@@ -127,7 +127,7 @@ describe("OLAP", function() {
 	describe("#createCube()", function() {
 		it("should create a new cube", async function() {
 			await olap.createCube({name: "main", model: {
-				source: "db1.c1",
+				source: "c1",
 				dimensions: [
 					{
 						path: "c",
@@ -146,12 +146,12 @@ describe("OLAP", function() {
 				]
 			}});
 
-			assert.equal(await db.collection("c1_main_cube").count(), 4);
+			assert.equal(await db.collection("olap_c1_main_cube").count(), 4);
 		});
 
 		it("should accept non-existent collections", async function() {
 			await olap.createCube({name: "main", model: {
-				source: "db1.c2",
+				source: "c2",
 				dimensions: [
 					{
 						path: "d1",
@@ -175,7 +175,7 @@ describe("OLAP", function() {
 			});
 
 			await olap.createCube({name: "main", model: {
-				source: "db1.c1",
+				source: "c1",
 				dimensions: [
 					{
 						path: "c",
@@ -194,12 +194,12 @@ describe("OLAP", function() {
 				]
 			}});
 
-			assert.equal(await db.collection("c1_main_cube").count(), 5);
+			assert.equal(await db.collection("olap_c1_main_cube").count(), 5);
 		});
 
 		it("should accept void measure", async function() {
 			await olap.createCube({name: "main", model: {
-				source: "db1.c1",
+				source: "c1",
 				dimensions: [
 					{
 						path: "c",
@@ -209,7 +209,7 @@ describe("OLAP", function() {
 				measures: []
 			}});
 
-			assert.equal(await db.collection("c1_main_cube").count(), 4);
+			assert.equal(await db.collection("olap_c1_main_cube").count(), 4);
 		});
 
 		it("should accept array elements in dimension path", async function() {
@@ -235,7 +235,7 @@ describe("OLAP", function() {
 			]);
 
 			await olap.createCube({name: "main", model: {
-				source: "db1.c2",
+				source: "c2",
 				dimensions: [
 					{
 						path: "d1.d2[].d3",
@@ -250,7 +250,7 @@ describe("OLAP", function() {
 				]
 			}});
 
-			let cubeEntry = await db.collection("c2_main_cube").find({}).next();
+			let cubeEntry = await db.collection("olap_c2_main_cube").find({}).next();
 			assert.equal(cubeEntry.m.mea, 11);
 		});
 
@@ -279,7 +279,7 @@ describe("OLAP", function() {
 			await new Promise(res => setTimeout(res, 100));
 
 			await olap.createCube({name: "main", model: {
-				source: "db1.c2",
+				source: "c2",
 				dimensions: [
 					{
 						path: "d1",
@@ -294,7 +294,7 @@ describe("OLAP", function() {
 				]
 			}});
 
-			let {_id, ...rest} = await db.collection("c2_main_cube").find({}).next();
+			let {_id, ...rest} = await db.collection("olap_c2_main_cube").find({}).next();
 			assert.deepEqual(rest, {
 				count: 4,
 				d: {dim: "1"},
@@ -321,7 +321,7 @@ describe("OLAP", function() {
 			await new Promise(res => setTimeout(res, 100));
 
 			await olap.createCube({name: "main", model: {
-				source: "db1.c2",
+				source: "c2",
 				dimensions: [
 					{
 						path: "tags[]",
@@ -336,9 +336,9 @@ describe("OLAP", function() {
 				]
 			}});
 
-			assert.equal(await db.collection("c2_main_cube").find({}).count(), 1);
+			assert.equal(await db.collection("olap_c2_main_cube").find({}).count(), 1);
 
-			let {_id, ...rest} = await db.collection("c2_main_cube").find({}).next();
+			let {_id, ...rest} = await db.collection("olap_c2_main_cube").find({}).next();
 			assert.deepEqual(rest, {
 				count: 4,
 				d: {tag: "1"},
@@ -373,7 +373,7 @@ describe("OLAP", function() {
 			await new Promise(res => setTimeout(res, 100));
 
 			await olap.createCube({name: "main", model: {
-				source: "db1.c3",
+				source: "c3",
 				dimensions: [
 					{
 						path: "timestamp",
@@ -390,22 +390,22 @@ describe("OLAP", function() {
 				]
 			}});
 
-			let {_id: _id0, d: d0, ...rest0} = await db.collection("c3_main_cube").find({"d.ts": new Date(1589011200000)}).next();
+			let {_id: _id0, d: d0, ...rest0} = await db.collection("olap_c3_main_cube").find({"d.ts": new Date(1589011200000)}).next();
 			assert.deepEqual(rest0, {
 				count: 1,
 				m: {procLength: 1}
 			});
-			let {_id: _id1, d: d1, ...rest1} = await db.collection("c3_main_cube").find({"d.ts": new Date(1589202000000)}).next();
+			let {_id: _id1, d: d1, ...rest1} = await db.collection("olap_c3_main_cube").find({"d.ts": new Date(1589202000000)}).next();
 			assert.deepEqual(rest1, {
 				count: 1,
 				m: {procLength: 2}
 			});
-			let {_id: _id2, d: d2, ...rest2} = await db.collection("c3_main_cube").find({"d.ts": new Date(1589288400000)}).next();
+			let {_id: _id2, d: d2, ...rest2} = await db.collection("olap_c3_main_cube").find({"d.ts": new Date(1589288400000)}).next();
 			assert.deepEqual(rest2, {
 				count: 2,
 				m: {procLength: 30}
 			});
-			let {_id: _id3, d: d3, ...rest3} = await db.collection("c3_main_cube").find({"d.ts": new Date(1589806800000)}).next();
+			let {_id: _id3, d: d3, ...rest3} = await db.collection("olap_c3_main_cube").find({"d.ts": new Date(1589806800000)}).next();
 			assert.deepEqual(rest3, {
 				count: 1,
 				m: {procLength: 100}
@@ -439,7 +439,7 @@ describe("OLAP", function() {
 			await new Promise(res => setTimeout(res, 100));
 
 			await olap.createCube({name: "main", model: {
-				source: "db1.c3",
+				source: "c3",
 				dimensions: [
 					{
 						path: "timestamp",
@@ -456,22 +456,22 @@ describe("OLAP", function() {
 				]
 			}});
 
-			let {_id: _id0, d: d0, ...rest0} = await db.collection("c3_main_cube").find({"d.ts": new Date(1588982400000)}).next();
+			let {_id: _id0, d: d0, ...rest0} = await db.collection("olap_c3_main_cube").find({"d.ts": new Date(1588982400000)}).next();
 			assert.deepEqual(rest0, {
 				count: 1,
 				m: {procLength: 1}
 			});
-			let {_id: _id1, d: d1, ...rest1} = await db.collection("c3_main_cube").find({"d.ts": new Date(1589155200000)}).next();
+			let {_id: _id1, d: d1, ...rest1} = await db.collection("olap_c3_main_cube").find({"d.ts": new Date(1589155200000)}).next();
 			assert.deepEqual(rest1, {
 				count: 1,
 				m: {procLength: 2}
 			});
-			let {_id: _id2, d: d2, ...rest2} = await db.collection("c3_main_cube").find({"d.ts": new Date(1589241600000)}).next();
+			let {_id: _id2, d: d2, ...rest2} = await db.collection("olap_c3_main_cube").find({"d.ts": new Date(1589241600000)}).next();
 			assert.deepEqual(rest2, {
 				count: 2,
 				m: {procLength: 30}
 			});
-			let {_id: _id3, d: d3, ...rest3} = await db.collection("c3_main_cube").find({"d.ts": new Date(1589760000000)}).next();
+			let {_id: _id3, d: d3, ...rest3} = await db.collection("olap_c3_main_cube").find({"d.ts": new Date(1589760000000)}).next();
 			assert.deepEqual(rest3, {
 				count: 1,
 				m: {procLength: 100}
@@ -505,7 +505,7 @@ describe("OLAP", function() {
 			await new Promise(res => setTimeout(res, 100));
 
 			await olap.createCube({name: "main", model: {
-				source: "db1.c3",
+				source: "c3",
 				dimensions: [
 					{
 						path: "timestamp",
@@ -522,7 +522,7 @@ describe("OLAP", function() {
 				]
 			}});
 
-			let {_id: _id0, d: d0, ...rest0} = await db.collection("c3_main_cube").find({"d.ts": new Date(1588291200000)}).next();
+			let {_id: _id0, d: d0, ...rest0} = await db.collection("olap_c3_main_cube").find({"d.ts": new Date(1588291200000)}).next();
 			assert.deepEqual(rest0, {
 				count: 5,
 				m: {procLength: 133}
@@ -556,7 +556,7 @@ describe("OLAP", function() {
 			await new Promise(res => setTimeout(res, 100));
 
 			await olap.createCube({name: "main", model: {
-				source: "db1.c3",
+				source: "c3",
 				dimensions: [
 					{
 						path: "timestamp",
@@ -573,7 +573,7 @@ describe("OLAP", function() {
 				]
 			}});
 
-			let {_id: _id0, d: d0, ...rest0} = await db.collection("c3_main_cube").find({"d.ts": new Date(1577836800000)}).next();
+			let {_id: _id0, d: d0, ...rest0} = await db.collection("olap_c3_main_cube").find({"d.ts": new Date(1577836800000)}).next();
 			assert.deepEqual(rest0, {
 				count: 5,
 				m: {procLength: 133}
@@ -592,7 +592,7 @@ describe("OLAP", function() {
 			await new Promise(res => setTimeout(res, 100));
 
 			await olap.createCube({name: "br", model: {
-				source: "db1.c2",
+				source: "c2",
 				dimensions: [
 					{
 						path: "meta.br.tags[]",
@@ -603,7 +603,7 @@ describe("OLAP", function() {
 			}});
 
 			await olap.createCube({name: "cd", model: {
-				source: "db1.c2",
+				source: "c2",
 				dimensions: [
 					{
 						path: "meta.cd.tags[]",
@@ -613,16 +613,16 @@ describe("OLAP", function() {
 				measures: []
 			}});
 
-			let {_id: _id0, ...rest0} = await db.collection("c2_br_cube").find({}).next();
+			let {_id: _id0, ...rest0} = await db.collection("olap_c2_br_cube").find({}).next();
 			assert.deepEqual(rest0, {
 				count: 1,
 				d: {tag: "tag1"}
 			});
 
-			assert.equal(await db.collection("c2_cd_cube").find({}).count(), 0);
-			assert.equal(await db.collection("c2_cd_shadow").find({}).count(), 1);
+			assert.equal(await db.collection("olap_c2_cd_cube").find({}).count(), 0);
+			assert.equal(await db.collection("olap_c2_cd_shadow").find({}).count(), 1);
 
-			let {_id: _id1, ...rest1} = await db.collection("c2_cd_shadow").find({}).next();
+			let {_id: _id1, ...rest1} = await db.collection("olap_c2_cd_shadow").find({}).next();
 			assert.deepEqual(rest1, {
 				d: {}
 			});
@@ -637,7 +637,7 @@ describe("OLAP", function() {
 
 		it("should load a cube from the config", async function() {
 			await olap.createCube({name: "main", model: {
-				source: "db1.c1",
+				source: "c1",
 				dimensions: [
 					{
 						path: "c",
@@ -669,7 +669,7 @@ describe("OLAP", function() {
 
 		it("should handle absences of oplogs with a cube", async function() {
 			await olap.createCube({name: "main", model: {
-				source: "db1.c1",
+				source: "c1",
 				dimensions: [
 					{
 						path: "c",
@@ -690,25 +690,25 @@ describe("OLAP", function() {
 
 			await olap.updateAggregates();
 
-			let {_id: _id0, ...rest0} = await db.collection("c1_main_cube").find({"d.city": "City 0"}).next();
+			let {_id: _id0, ...rest0} = await db.collection("olap_c1_main_cube").find({"d.city": "City 0"}).next();
 			assert.deepEqual(rest0, {
 				count: 1,
 				d: {city: "City 0"},
 				m: {males: 1, females: 2}
 			});
-			let {_id: _id1, ...rest1} = await db.collection("c1_main_cube").find({"d.city": "City 1"}).next();
+			let {_id: _id1, ...rest1} = await db.collection("olap_c1_main_cube").find({"d.city": "City 1"}).next();
 			assert.deepEqual(rest1, {
 				count: 1,
 				d: {city: "City 1"},
 				m: {males: 10, females: 20}
 			});
-			let {_id: _id2, ...rest2} = await db.collection("c1_main_cube").find({"d.city": "City 2"}).next();
+			let {_id: _id2, ...rest2} = await db.collection("olap_c1_main_cube").find({"d.city": "City 2"}).next();
 			assert.deepEqual(rest2, {
 				count: 1,
 				d: {city: "City 2"},
 				m: {males: 100, females: 200}
 			});
-			let {_id: _id3, ...rest3} = await db.collection("c1_main_cube").find({"d.city": "City 3"}).next();
+			let {_id: _id3, ...rest3} = await db.collection("olap_c1_main_cube").find({"d.city": "City 3"}).next();
 			assert.deepEqual(rest3, {
 				count: 1,
 				d: {city: "City 3"},
@@ -720,7 +720,7 @@ describe("OLAP", function() {
 			await new Promise(res => setTimeout(res, 100));
 
 			await olap.createCube({name: "main", model: {
-				source: "db1.c1",
+				source: "c1",
 				dimensions: [
 					{
 						path: "c",
@@ -749,31 +749,31 @@ describe("OLAP", function() {
 
 			await olap.updateAggregates();
 
-			let {_id: _id0, ...rest0} = await db.collection("c1_main_cube").find({"d.city": "City 0"}).next();
+			let {_id: _id0, ...rest0} = await db.collection("olap_c1_main_cube").find({"d.city": "City 0"}).next();
 			assert.deepEqual(rest0, {
 				count: 1,
 				d: {city: "City 0"},
 				m: {males: 1, females: 2}
 			});
-			let {_id: _id1, ...rest1} = await db.collection("c1_main_cube").find({"d.city": "City 1"}).next();
+			let {_id: _id1, ...rest1} = await db.collection("olap_c1_main_cube").find({"d.city": "City 1"}).next();
 			assert.deepEqual(rest1, {
 				count: 1,
 				d: {city: "City 1"},
 				m: {males: 10, females: 20}
 			});
-			let {_id: _id2, ...rest2} = await db.collection("c1_main_cube").find({"d.city": "City 2"}).next();
+			let {_id: _id2, ...rest2} = await db.collection("olap_c1_main_cube").find({"d.city": "City 2"}).next();
 			assert.deepEqual(rest2, {
 				count: 1,
 				d: {city: "City 2"},
 				m: {males: 100, females: 200}
 			});
-			let {_id: _id3, ...rest3} = await db.collection("c1_main_cube").find({"d.city": "City 3"}).next();
+			let {_id: _id3, ...rest3} = await db.collection("olap_c1_main_cube").find({"d.city": "City 3"}).next();
 			assert.deepEqual(rest3, {
 				count: 1,
 				d: {city: "City 3"},
 				m: {males: 1000, females: 2000}
 			});
-			let {_id: _id4, ...rest4} = await db.collection("c1_main_cube").find({"d.city": "City 4"}).next();
+			let {_id: _id4, ...rest4} = await db.collection("olap_c1_main_cube").find({"d.city": "City 4"}).next();
 			assert.deepEqual(rest4, {
 				count: 1,
 				d: {city: "City 4"},
@@ -785,7 +785,7 @@ describe("OLAP", function() {
 			await new Promise(res => setTimeout(res, 100));
 
 			await olap.createCube({name: "main", model: {
-				source: "db1.c1",
+				source: "c1",
 				dimensions: [
 					{
 						path: "c",
@@ -815,25 +815,25 @@ describe("OLAP", function() {
 
 			await olap.updateAggregates();
 
-			let {_id: _id0, ...rest0} = await db.collection("c1_main_cube").find({"d.city": "City 0"}).next();
+			let {_id: _id0, ...rest0} = await db.collection("olap_c1_main_cube").find({"d.city": "City 0"}).next();
 			assert.deepEqual(rest0, {
 				count: 1,
 				d: {city: "City 0"},
 				m: {males: 1, females: 2}
 			});
-			let {_id: _id1, ...rest1} = await db.collection("c1_main_cube").find({"d.city": "City 1"}).next();
+			let {_id: _id1, ...rest1} = await db.collection("olap_c1_main_cube").find({"d.city": "City 1"}).next();
 			assert.deepEqual(rest1, {
 				count: 1,
 				d: {city: "City 1"},
 				m: {males: 10, females: 20}
 			});
-			let {_id: _id2, ...rest2} = await db.collection("c1_main_cube").find({"d.city": "City 2"}).next();
+			let {_id: _id2, ...rest2} = await db.collection("olap_c1_main_cube").find({"d.city": "City 2"}).next();
 			assert.deepEqual(rest2, {
 				count: 1,
 				d: {city: "City 2"},
 				m: {males: 100, females: 200}
 			});
-			let {_id: _id3, ...rest3} = await db.collection("c1_main_cube").find({"d.city": "City 3"}).next();
+			let {_id: _id3, ...rest3} = await db.collection("olap_c1_main_cube").find({"d.city": "City 3"}).next();
 			assert.deepEqual(rest3, {
 				count: 1,
 				d: {city: "City 3"},
@@ -845,7 +845,7 @@ describe("OLAP", function() {
 			await new Promise(res => setTimeout(res, 100));
 
 			await olap.createCube({name: "main", model: {
-				source: "db1.c1",
+				source: "c1",
 				dimensions: [
 					{
 						path: "c",
@@ -870,32 +870,32 @@ describe("OLAP", function() {
 
 			await olap.updateAggregates();
 
-			let {_id: _id0, ...rest0} = await db.collection("c1_main_cube").find({"d.city": "City 0"}).next();
+			let {_id: _id0, ...rest0} = await db.collection("olap_c1_main_cube").find({"d.city": "City 0"}).next();
 			assert.deepEqual(rest0, {
 				count: 1,
 				d: {city: "City 0"},
 				m: {males: 1, females: 2}
 			});
-			let {_id: _id1, ...rest1} = await db.collection("c1_main_cube").find({"d.city": "City 1"}).next();
+			let {_id: _id1, ...rest1} = await db.collection("olap_c1_main_cube").find({"d.city": "City 1"}).next();
 			assert.deepEqual(rest1, {
 				count: 1,
 				d: {city: "City 1"},
 				m: {males: 10, females: 20}
 			});
-			let {_id: _id2, ...rest2} = await db.collection("c1_main_cube").find({"d.city": "City 2"}).next();
+			let {_id: _id2, ...rest2} = await db.collection("olap_c1_main_cube").find({"d.city": "City 2"}).next();
 			assert.deepEqual(rest2, {
 				count: 1,
 				d: {city: "City 2"},
 				m: {males: 100, females: 200}
 			});
-			assert.equal(await db.collection("c1_main_cube").find({"d.city": "City 3"}).count(), 0);
+			assert.equal(await db.collection("olap_c1_main_cube").find({"d.city": "City 3"}).count(), 0);
 		});
 
 		it("should process all types of oplogs at once", async function() {
 			await new Promise(res => setTimeout(res, 100));
 
 			await olap.createCube({name: "main", model: {
-				source: "db1.c1",
+				source: "c1",
 				dimensions: [
 					{
 						path: "c",
@@ -931,25 +931,25 @@ describe("OLAP", function() {
 
 			await olap.updateAggregates();
 
-			let {_id: _id0, ...rest0} = await db.collection("c1_main_cube").find({"d.city": "City 0"}).next();
+			let {_id: _id0, ...rest0} = await db.collection("olap_c1_main_cube").find({"d.city": "City 0"}).next();
 			assert.deepEqual(rest0, {
 				count: 1,
 				d: {city: "City 0"},
 				m: {males: 1, females: 2}
 			});
-			let {_id: _id1, ...rest1} = await db.collection("c1_main_cube").find({"d.city": "City 1"}).next();
+			let {_id: _id1, ...rest1} = await db.collection("olap_c1_main_cube").find({"d.city": "City 1"}).next();
 			assert.deepEqual(rest1, {
 				count: 1,
 				d: {city: "City 1"},
 				m: {males: 10, females: 20}
 			});
-			let {_id: _id2, ...rest2} = await db.collection("c1_main_cube").find({"d.city": "City 2"}).next();
+			let {_id: _id2, ...rest2} = await db.collection("olap_c1_main_cube").find({"d.city": "City 2"}).next();
 			assert.deepEqual(rest2, {
 				count: 1,
 				d: {city: "City 2"},
 				m: {males: 100, females: 200}
 			});
-			let {_id: _id3, ...rest3} = await db.collection("c1_main_cube").find({"d.city": "City 3"}).next();
+			let {_id: _id3, ...rest3} = await db.collection("olap_c1_main_cube").find({"d.city": "City 3"}).next();
 			assert.deepEqual(rest3, {
 				count: 1,
 				d: {city: "City 3"},
@@ -982,7 +982,7 @@ describe("OLAP", function() {
 			await new Promise(res => setTimeout(res, 100));
 
 			await olap.createCube({name: "main", model: {
-				source: "db1.c2",
+				source: "c2",
 				dimensions: [
 					{
 						path: "d1.d2[].d3",
@@ -1012,7 +1012,7 @@ describe("OLAP", function() {
 
 			await olap.updateAggregates();
 
-			let {_id, ...rest} = await db.collection("c2_main_cube").find({}).next();
+			let {_id, ...rest} = await db.collection("olap_c2_main_cube").find({}).next();
 			assert.deepEqual(rest, {
 				count: 6,
 				d: {dim: "1"},
@@ -1056,7 +1056,7 @@ describe("OLAP", function() {
 			await new Promise(res => setTimeout(res, 100));
 
 			await olap.createCube({name: "main", model: {
-				source: "db1.c2",
+				source: "c2",
 				dimensions: [
 					{
 						path: "d1.d2[].d3",
@@ -1077,7 +1077,7 @@ describe("OLAP", function() {
 
 			await olap.updateAggregates();
 
-			let {_id, ...rest} = await db.collection("c2_main_cube").find({}).next();
+			let {_id, ...rest} = await db.collection("olap_c2_main_cube").find({}).next();
 			assert.deepEqual(rest, {
 				count: 7,
 				d: {dim: "1"},
@@ -1121,7 +1121,7 @@ describe("OLAP", function() {
 			await new Promise(res => setTimeout(res, 100));
 
 			await olap.createCube({name: "main", model: {
-				source: "db1.c2",
+				source: "c2",
 				dimensions: [
 					{
 						path: "d1.d2[].d3",
@@ -1142,7 +1142,7 @@ describe("OLAP", function() {
 
 			await olap.updateAggregates();
 
-			let {_id, ...rest} = await db.collection("c2_main_cube").find({}).next();
+			let {_id, ...rest} = await db.collection("olap_c2_main_cube").find({}).next();
 			assert.deepEqual(rest, {
 				count: 4,
 				d: {dim: "1"},
@@ -1175,7 +1175,7 @@ describe("OLAP", function() {
 			await new Promise(res => setTimeout(res, 100));
 
 			await olap.createCube({name: "main", model: {
-				source: "db1.c2",
+				source: "c2",
 				dimensions: [
 					{
 						path: "d1",
@@ -1205,7 +1205,7 @@ describe("OLAP", function() {
 
 			await olap.updateAggregates();
 
-			let {_id, ...rest} = await db.collection("c2_main_cube").find({}).next();
+			let {_id, ...rest} = await db.collection("olap_c2_main_cube").find({}).next();
 			assert.deepEqual(rest, {
 				count: 6,
 				d: {dim: "1"},
@@ -1249,7 +1249,7 @@ describe("OLAP", function() {
 			await new Promise(res => setTimeout(res, 100));
 
 			await olap.createCube({name: "main", model: {
-				source: "db1.c2",
+				source: "c2",
 				dimensions: [
 					{
 						path: "d1",
@@ -1270,7 +1270,7 @@ describe("OLAP", function() {
 
 			await olap.updateAggregates();
 
-			let {_id, ...rest} = await db.collection("c2_main_cube").find({}).next();
+			let {_id, ...rest} = await db.collection("olap_c2_main_cube").find({}).next();
 			assert.deepEqual(rest, {
 				count: 7,
 				d: {dim: "1"},
@@ -1314,7 +1314,7 @@ describe("OLAP", function() {
 			await new Promise(res => setTimeout(res, 100));
 
 			await olap.createCube({name: "main", model: {
-				source: "db1.c2",
+				source: "c2",
 				dimensions: [
 					{
 						path: "d1",
@@ -1335,7 +1335,7 @@ describe("OLAP", function() {
 
 			await olap.updateAggregates();
 
-			let {_id, ...rest} = await db.collection("c2_main_cube").find({}).next();
+			let {_id, ...rest} = await db.collection("olap_c2_main_cube").find({}).next();
 			assert.deepEqual(rest, {
 				count: 4,
 				d: {dim: "1"},
@@ -1364,7 +1364,7 @@ describe("OLAP", function() {
 			]);
 
 			await olap.createCube({name: "main", model: {
-				source: "db1.c3",
+				source: "c3",
 				dimensions: [
 					{
 						path: "timestamp",
@@ -1390,22 +1390,22 @@ describe("OLAP", function() {
 
 			await olap.updateAggregates();
 
-			let {_id: _id0, d: d0, ...rest0} = await db.collection("c3_main_cube").find({"d.ts": new Date(1589011200000)}).next();
+			let {_id: _id0, d: d0, ...rest0} = await db.collection("olap_c3_main_cube").find({"d.ts": new Date(1589011200000)}).next();
 			assert.deepEqual(rest0, {
 				count: 1,
 				m: {procLength: 1}
 			});
-			let {_id: _id1, d: d1, ...rest1} = await db.collection("c3_main_cube").find({"d.ts": new Date(1589202000000)}).next();
+			let {_id: _id1, d: d1, ...rest1} = await db.collection("olap_c3_main_cube").find({"d.ts": new Date(1589202000000)}).next();
 			assert.deepEqual(rest1, {
 				count: 1,
 				m: {procLength: 2}
 			});
-			let {_id: _id2, d: d2, ...rest2} = await db.collection("c3_main_cube").find({"d.ts": new Date(1589288400000)}).next();
+			let {_id: _id2, d: d2, ...rest2} = await db.collection("olap_c3_main_cube").find({"d.ts": new Date(1589288400000)}).next();
 			assert.deepEqual(rest2, {
 				count: 2,
 				m: {procLength: 30}
 			});
-			let {_id: _id3, d: d3, ...rest3} = await db.collection("c3_main_cube").find({"d.ts": new Date(1589806800000)}).next();
+			let {_id: _id3, d: d3, ...rest3} = await db.collection("olap_c3_main_cube").find({"d.ts": new Date(1589806800000)}).next();
 			assert.deepEqual(rest3, {
 				count: 1,
 				m: {procLength: 100}
@@ -1438,7 +1438,7 @@ describe("OLAP", function() {
 			});
 
 			await olap.createCube({name: "main", model: {
-				source: "db1.c3",
+				source: "c3",
 				dimensions: [
 					{
 						path: "timestamp",
@@ -1463,27 +1463,27 @@ describe("OLAP", function() {
 
 			await olap.updateAggregates();
 
-			let {_id: _id0, d: d0, ...rest0} = await db.collection("c3_main_cube").find({"d.ts": new Date(1589011200000)}).next();
+			let {_id: _id0, d: d0, ...rest0} = await db.collection("olap_c3_main_cube").find({"d.ts": new Date(1589011200000)}).next();
 			assert.deepEqual(rest0, {
 				count: 1,
 				m: {procLength: 1}
 			});
-			let {_id: _id1, d: d1, ...rest1} = await db.collection("c3_main_cube").find({"d.ts": new Date(1589202000000)}).next();
+			let {_id: _id1, d: d1, ...rest1} = await db.collection("olap_c3_main_cube").find({"d.ts": new Date(1589202000000)}).next();
 			assert.deepEqual(rest1, {
 				count: 1,
 				m: {procLength: 2}
 			});
-			let {_id: _id2, d: d2, ...rest2} = await db.collection("c3_main_cube").find({"d.ts": new Date(1589288400000)}).next();
+			let {_id: _id2, d: d2, ...rest2} = await db.collection("olap_c3_main_cube").find({"d.ts": new Date(1589288400000)}).next();
 			assert.deepEqual(rest2, {
 				count: 1,
 				m: {procLength: 10}
 			});
-			let {_id: _id3, d: d3, ...rest3} = await db.collection("c3_main_cube").find({"d.ts": new Date(1589806800000)}).next();
+			let {_id: _id3, d: d3, ...rest3} = await db.collection("olap_c3_main_cube").find({"d.ts": new Date(1589806800000)}).next();
 			assert.deepEqual(rest3, {
 				count: 1,
 				m: {procLength: 100}
 			});
-			let {_id: _id4, d: d4, ...rest4} = await db.collection("c3_main_cube").find({"d.ts": new Date(1589292000000)}).next();
+			let {_id: _id4, d: d4, ...rest4} = await db.collection("olap_c3_main_cube").find({"d.ts": new Date(1589292000000)}).next();
 			assert.deepEqual(rest4, {
 				count: 1,
 				m: {procLength: 20}
@@ -1516,7 +1516,7 @@ describe("OLAP", function() {
 			});
 
 			await olap.createCube({name: "main", model: {
-				source: "db1.c3",
+				source: "c3",
 				dimensions: [
 					{
 						path: "timestamp",
@@ -1541,22 +1541,22 @@ describe("OLAP", function() {
 
 			await olap.updateAggregates();
 
-			let {_id: _id0, d: d0, ...rest0} = await db.collection("c3_main_cube").find({"d.ts": new Date(1589011200000)}).next();
+			let {_id: _id0, d: d0, ...rest0} = await db.collection("olap_c3_main_cube").find({"d.ts": new Date(1589011200000)}).next();
 			assert.deepEqual(rest0, {
 				count: 1,
 				m: {procLength: 1}
 			});
-			let {_id: _id1, d: d1, ...rest1} = await db.collection("c3_main_cube").find({"d.ts": new Date(1589202000000)}).next();
+			let {_id: _id1, d: d1, ...rest1} = await db.collection("olap_c3_main_cube").find({"d.ts": new Date(1589202000000)}).next();
 			assert.deepEqual(rest1, {
 				count: 1,
 				m: {procLength: 2}
 			});
-			let {_id: _id2, d: d2, ...rest2} = await db.collection("c3_main_cube").find({"d.ts": new Date(1589288400000)}).next();
+			let {_id: _id2, d: d2, ...rest2} = await db.collection("olap_c3_main_cube").find({"d.ts": new Date(1589288400000)}).next();
 			assert.deepEqual(rest2, {
 				count: 1,
 				m: {procLength: 10}
 			});
-			let {_id: _id3, d: d3, ...rest3} = await db.collection("c3_main_cube").find({"d.ts": new Date(1589806800000)}).next();
+			let {_id: _id3, d: d3, ...rest3} = await db.collection("olap_c3_main_cube").find({"d.ts": new Date(1589806800000)}).next();
 			assert.deepEqual(rest3, {
 				count: 1,
 				m: {procLength: 100}
@@ -1580,7 +1580,7 @@ describe("OLAP", function() {
 			await new Promise(res => setTimeout(res, 100));
 
 			await olap.createCube({name: "main", model: {
-				source: "db1.c2",
+				source: "c2",
 				dimensions: [
 					{
 						path: "tags[]",
@@ -1603,9 +1603,9 @@ describe("OLAP", function() {
 
 			await olap.updateAggregates();
 
-			assert.equal(await db.collection("c2_main_cube").find({}).count(), 1);
+			assert.equal(await db.collection("olap_c2_main_cube").find({}).count(), 1);
 
-			let {_id, ...rest} = await db.collection("c2_main_cube").find({}).next();
+			let {_id, ...rest} = await db.collection("olap_c2_main_cube").find({}).next();
 			assert.deepEqual(rest, {
 				count: 4,
 				d: {tag: "1"},
@@ -1625,7 +1625,7 @@ describe("OLAP", function() {
 			await new Promise(res => setTimeout(res, 100));
 
 			await olap.createCube({name: "br", model: {
-				source: "db1.c2",
+				source: "c2",
 				dimensions: [
 					{
 						path: "meta.br.tags[]",
@@ -1636,7 +1636,7 @@ describe("OLAP", function() {
 			}});
 
 			await olap.createCube({name: "cd", model: {
-				source: "db1.c2",
+				source: "c2",
 				dimensions: [
 					{
 						path: "meta.cd.tags[]",
@@ -1658,20 +1658,20 @@ describe("OLAP", function() {
 
 			await olap.updateAggregates();
 
-			let {_id: _id0, ...rest0} = await db.collection("c2_br_cube").find({}).next();
+			let {_id: _id0, ...rest0} = await db.collection("olap_c2_br_cube").find({}).next();
 			assert.deepEqual(rest0, {
 				count: 1,
 				d: {tag: "tag1"}
 			});
 
-			let {_id: _id1, ...rest1} = await db.collection("c2_cd_cube").find({}).next();
+			let {_id: _id1, ...rest1} = await db.collection("olap_c2_cd_cube").find({}).next();
 			assert.deepEqual(rest1, {
 				count: 1,
 				d: {tag: "tag1"}
 			});
 
-			assert.equal(await db.collection("c2_cd_shadow").find({}).count(), 1);
-			let {_id: _id2, ...rest2} = await db.collection("c2_cd_shadow").find({}).next();
+			assert.equal(await db.collection("olap_c2_cd_shadow").find({}).count(), 1);
+			let {_id: _id2, ...rest2} = await db.collection("olap_c2_cd_shadow").find({}).next();
 			assert.deepEqual(rest2, {
 				d: {tag: ["tag1"]}
 			});
@@ -1688,7 +1688,7 @@ describe("OLAP", function() {
 			await new Promise(res => setTimeout(res, 100));
 
 			await olap.createCube({name: "br", model: {
-				source: "db1.c2",
+				source: "c2",
 				dimensions: [
 					{
 						path: "meta.br.tags[]",
@@ -1712,13 +1712,13 @@ describe("OLAP", function() {
 
 			await olap.updateAggregates();
 
-			assert.equal(await db.collection("c2_br_shadow").find({}).count(), 1);
-			let {_id: _id0, ...rest0} = await db.collection("c2_br_shadow").find({}).next();
+			assert.equal(await db.collection("olap_c2_br_shadow").find({}).count(), 1);
+			let {_id: _id0, ...rest0} = await db.collection("olap_c2_br_shadow").find({}).next();
 			assert.deepEqual(rest0, {
 				d: {tag: ["tag1"]}
 			});
 
-			let {_id: _id1, ...rest1} = await db.collection("c2_br_cube").find({}).next();
+			let {_id: _id1, ...rest1} = await db.collection("olap_c2_br_cube").find({}).next();
 			assert.deepEqual(rest1, {
 				count: 1,
 				d: {tag: "tag1", done: "__null__"}
@@ -1736,7 +1736,7 @@ describe("OLAP", function() {
 			await new Promise(res => setTimeout(res, 100));
 
 			await olap.createCube({name: "br", model: {
-				source: "db1.c2",
+				source: "c2",
 				dimensions: [
 					{
 						path: "meta.br.tags[]",
@@ -1761,13 +1761,13 @@ describe("OLAP", function() {
 
 			await olap.updateAggregates();
 
-			assert.equal(await db.collection("c2_br_shadow").find({}).count(), 1);
-			let {_id: _id0, ...rest0} = await db.collection("c2_br_shadow").find({}).next();
+			assert.equal(await db.collection("olap_c2_br_shadow").find({}).count(), 1);
+			let {_id: _id0, ...rest0} = await db.collection("olap_c2_br_shadow").find({}).next();
 			assert.deepEqual(rest0, {
 				d: {tag: ["tag1"], done: true}
 			});
 
-			let {_id: _id1, ...rest1} = await db.collection("c2_br_cube").find({}).next();
+			let {_id: _id1, ...rest1} = await db.collection("olap_c2_br_cube").find({}).next();
 			assert.deepEqual(rest1, {
 				count: 1,
 				d: {tag: "tag1", done: true}
@@ -1791,7 +1791,7 @@ describe("OLAP", function() {
 			await new Promise(res => setTimeout(res, 100));
 
 			await olap.createCube({name: "br", model: {
-				source: "db1.c2",
+				source: "c2",
 				dimensions: [
 					{
 						path: "meta.br.tags[]",
@@ -1820,13 +1820,13 @@ describe("OLAP", function() {
 
 			await olap.updateAggregates();
 
-			assert.equal(await db.collection("c2_br_shadow").find({}).count(), 1);
-			let {_id: _id0, ...rest0} = await db.collection("c2_br_shadow").find({}).next();
+			assert.equal(await db.collection("olap_c2_br_shadow").find({}).count(), 1);
+			let {_id: _id0, ...rest0} = await db.collection("olap_c2_br_shadow").find({}).next();
 			assert.deepEqual(rest0, {
 				d: {tag: ["tag1"], done: true, name: "jerry"}
 			});
 
-			let {_id: _id1, ...rest1} = await db.collection("c2_br_cube").find({}).next();
+			let {_id: _id1, ...rest1} = await db.collection("olap_c2_br_cube").find({}).next();
 			assert.deepEqual(rest1, {
 				count: 1,
 				d: {tag: "tag1", done: true, name: "jerry"}
@@ -1850,7 +1850,7 @@ describe("OLAP", function() {
 			await new Promise(res => setTimeout(res, 100));
 
 			await olap.createCube({name: "br", model: {
-				source: "db1.c2",
+				source: "c2",
 				dimensions: [
 					{
 						path: "meta.br.tags[]",
@@ -1878,13 +1878,13 @@ describe("OLAP", function() {
 
 			await olap.updateAggregates();
 
-			assert.equal(await db.collection("c2_br_shadow").find({}).count(), 1);
-			let {_id: _id0, ...rest0} = await db.collection("c2_br_shadow").find({}).next();
+			assert.equal(await db.collection("olap_c2_br_shadow").find({}).count(), 1);
+			let {_id: _id0, ...rest0} = await db.collection("olap_c2_br_shadow").find({}).next();
 			assert.deepEqual(rest0, {
 				d: {tag: ["tag1"], done: true}
 			});
 
-			let {_id: _id1, ...rest1} = await db.collection("c2_br_cube").find({}).next();
+			let {_id: _id1, ...rest1} = await db.collection("olap_c2_br_cube").find({}).next();
 			assert.deepEqual(rest1, {
 				count: 1,
 				d: {tag: "tag1", done: true, name: "__null__"}
@@ -1909,7 +1909,7 @@ describe("OLAP", function() {
 			await new Promise(res => setTimeout(res, 100));
 
 			await olap.createCube({name: "br", model: {
-				source: "db1.c2",
+				source: "c2",
 				dimensions: [
 					{
 						path: "meta.br.tags[]",
@@ -1933,13 +1933,13 @@ describe("OLAP", function() {
 
 			await olap.updateAggregates();
 
-			assert.equal(await db.collection("c2_br_shadow").find({}).count(), 1);
-			let {_id: _id0, ...rest0} = await db.collection("c2_br_shadow").find({}).next();
+			assert.equal(await db.collection("olap_c2_br_shadow").find({}).count(), 1);
+			let {_id: _id0, ...rest0} = await db.collection("olap_c2_br_shadow").find({}).next();
 			assert.deepEqual(rest0, {
 				d: {tag: ["tag1"]}
 			});
 
-			let {_id: _id1, ...rest1} = await db.collection("c2_br_cube").find({}).next();
+			let {_id: _id1, ...rest1} = await db.collection("olap_c2_br_cube").find({}).next();
 			assert.deepEqual(rest1, {
 				count: 1,
 				d: {tag: "tag1", done: "__null__"}
@@ -1964,7 +1964,7 @@ describe("OLAP", function() {
 			await new Promise(res => setTimeout(res, 100));
 
 			await olap.createCube({name: "br", model: {
-				source: "db1.c2",
+				source: "c2",
 				dimensions: [
 					{
 						path: "meta.br.tags[]",
@@ -1988,13 +1988,13 @@ describe("OLAP", function() {
 
 			await olap.updateAggregates();
 
-			assert.equal(await db.collection("c2_br_shadow").find({}).count(), 1);
-			let {_id: _id0, ...rest0} = await db.collection("c2_br_shadow").find({}).next();
+			assert.equal(await db.collection("olap_c2_br_shadow").find({}).count(), 1);
+			let {_id: _id0, ...rest0} = await db.collection("olap_c2_br_shadow").find({}).next();
 			assert.deepEqual(rest0, {
 				d: {done: true}
 			});
 
-			assert.equal(await db.collection("c2_br_cube").find({}).count(), 0);
+			assert.equal(await db.collection("olap_c2_br_cube").find({}).count(), 0);
 		});
 
 		it("array dimension all-all", async function() {
@@ -2015,7 +2015,7 @@ describe("OLAP", function() {
 			await new Promise(res => setTimeout(res, 100));
 
 			await olap.createCube({name: "br", model: {
-				source: "db1.c2",
+				source: "c2",
 				dimensions: [
 					{
 						path: "meta.br.tags[]",
@@ -2039,18 +2039,18 @@ describe("OLAP", function() {
 
 			await olap.updateAggregates();
 
-			assert.equal(await db.collection("c2_br_shadow").find({}).count(), 1);
-			let {_id: _id0, ...rest0} = await db.collection("c2_br_shadow").find({}).next();
+			assert.equal(await db.collection("olap_c2_br_shadow").find({}).count(), 1);
+			let {_id: _id0, ...rest0} = await db.collection("olap_c2_br_shadow").find({}).next();
 			assert.deepEqual(rest0, {d: {}});
 
-			assert.equal(await db.collection("c2_br_cube").find({}).count(), 0);
+			assert.equal(await db.collection("olap_c2_br_cube").find({}).count(), 0);
 		});
 	});
 
 	describe("Oplog buffering", async function() {
 		it("should not leave trailing listeners", async function() {
 			await olap.createCube({name: "main", model: {
-				source: "db1.c1",
+				source: "c1",
 				dimensions: [
 					{
 						path: "c",
@@ -2078,7 +2078,7 @@ describe("OLAP", function() {
 
 		it("should buffer oplogs for existing cubes", async function() {
 			await olap.createCube({name: "main", model: {
-				source: "db1.c1",
+				source: "c1",
 				dimensions: [
 					{
 						path: "c",
@@ -2122,7 +2122,7 @@ describe("OLAP", function() {
 			await new Promise(res => setTimeout(res, 100));
 
 			await olap.createCube({name: "main", model: {
-				source: "db1.c1",
+				source: "c1",
 				dimensions: [
 					{
 						path: "c",
@@ -2166,7 +2166,7 @@ describe("OLAP", function() {
 			await new Promise(res => setTimeout(res, 100));
 
 			await olap.createCube({name: "main", model: {
-				source: "db1.c1",
+				source: "c1",
 				dimensions: [
 					{
 						path: "c",
@@ -2228,7 +2228,7 @@ describe("OLAP", function() {
 			await new Promise(res => setTimeout(res, 100));
 
 			await olap.createCube({name: "main", model: {
-				source: "db1.c3",
+				source: "c3",
 				dimensions: [
 					{
 						path: "timestamp",

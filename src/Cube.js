@@ -35,8 +35,8 @@ class Cube {
 		this.cubeMetaInfoColName = configColName;
 
 		this.dataColName = colName;
-		this.cubeColName = colName + "_" + name + "_cube";
-		this.shadowColName = colName + "_" + name + "_shadow";
+		this.cubeColName = `olap_${colName}_${name}_cube`;
+		this.shadowColName = `olap_${colName}_${name}_shadow`;
 	}
 
 	async initNew() {
@@ -488,7 +488,7 @@ module.exports = Cube;
 
 /*
 model: {
-	source: "sourceDatabase.sourceCollection",
+	source: "sourceCollection",
 	dimensions: [
 		{
 			path: "accountId",
