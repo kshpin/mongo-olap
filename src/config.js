@@ -25,6 +25,7 @@ let config = {
 				ca:				 process.env.NATS_TLS_CA				|| undefined,
 				key:			 process.env.NATS_TLS_KEY				|| undefined,
 				cert:			 process.env.NATS_TLS_CERT				|| undefined,
+				servername:		 process.env.NATS_TLS_SERVERNAME		|| undefined,
 			},
 			pingInterval:		+process.env.NATS_PING_INTERVAL			|| 10000,
 		},
