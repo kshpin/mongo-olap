@@ -13,9 +13,9 @@ This service relies on MongoDB's replication set setting, which allows using its
 | `DB_NAME` | `db` | The database name within MongoDB to use as the data source |
 | `DB_RETRY_INTERVAL` | `1000` | Millisecond interval to try connecting to MongoDB again (only for first connection, disconnecting after a successful connection results in a fatal error) |
 | `NATS_URL` | `nats://localhost:4222/` | The url through which to connect to NATS, including port |
-| `NATS_USER` | | NATS username for authorization |
-| `NATS_PASS` | | NATS password for authorization |
-| `NATS_TOKEN` | | NATS token for authorization (mutually exclusive with user/pass) |
+| `NATS_AUTH_USER` | | NATS username for authorization |
+| `NATS_AUTH_PASS` | | NATS password for authorization |
+| `NATS_AUTH_TOKEN` | | NATS token for authorization (mutually exclusive with user/pass) |
 | `NATS_TLS_CA` | | NATS TLS CA file path |
 | `NATS_TLS_KEY` | | NATS TLS key file path |
 | `NATS_TLS_CERT` | | NATS TLS certificate file path |
