@@ -91,11 +91,11 @@ class OLAP {
 		if (state.autoUpdating) await this.startAutoUpdate(state.updateInterval);
 	}
 
-	async createCube({name, model, principalEntity, guaranteeZero}) {
+	async createCube({name, model, principalEntity, skipPreaggregation}) {
 		if (this.cubes.some(cube => cube.name === name)) throw new Error(`cube [${name}] already exists`);
 
 		let cube = new Cube(this.client, this.db, this.cubeMetaInfoColName, name, model, principalEntity);
-		await cube.initNew(guaranteeZero);
+		await cube.initNew(skipPreaggregation);
 
 		if (this.cubes.length === 0) this.oldestOplogTs = cube.lastProcessed;
 

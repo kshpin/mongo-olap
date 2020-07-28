@@ -39,7 +39,7 @@ class Cube {
 		this.shadowColName = `olap_${model.source}_${name}_shadow`;
 	}
 
-	async initNew(guaranteeZero) {
+	async initNew(skipPreaggregation) {
 		let log = logger.child({
 			func: "initNew"
 		});
@@ -148,9 +148,8 @@ class Cube {
 			if (await this.db.listCollections({name: this.shadowColName}).hasNext()) await this.db.collection(this.shadowColName).drop();
 			if (await this.db.listCollections({name: this.cubeColName}).hasNext()) await this.db.collection(this.cubeColName).drop();
 
-			if (guaranteeZero) {
+			if (skipPreaggregation) {
 				log.debug({message: "skipping shadow/cube collection aggregation"});
-
 				await this.db.createCollection(this.shadowColName);
 				await this.db.createCollection(this.cubeColName);
 			} else {
