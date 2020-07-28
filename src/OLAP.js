@@ -148,14 +148,15 @@ class OLAP {
 
 	listCubes() {
 		return this.cubes.map(cube => ({
-			collection: cube.dataColName,
-			cube: cube.name
+			name: cube.name,
+			model: cube.model,
+			principalEntity: cube.principalEntity
 		}));
 	}
 
 	async deleteCube({cubeName}) {
 		let cubeIdx = this.cubes.findIndex(cube => cube.name === cubeName);
-		if (cubeIdx === -1) throw new Error("no cube [" + cubeName + "]");
+		if (cubeIdx === -1) throw new Error(`no cube [${cubeName}]`);
 		let cube = this.cubes[cubeIdx];
 
 		await this.db.collection(cube.cubeColName).drop();
