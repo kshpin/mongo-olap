@@ -86,7 +86,7 @@ All parameters are properties of an object in JSON format, stringified.
 The main two requests are for creating a cube and aggregating it:
 | Publish topic | Parameters |
 | --- | --- |
-| `"createCube"`<br>creates a cube | `name` - name of the cube<br>`model` - cube model<br>`principalEntity` - the logical entity representing what the cube is aggregating |
+| `"createCube"`<br>creates a cube | `name` - name of the cube<br>`model` - cube model<br>`principalEntity` - the logical entity representing what the cube is aggregating<br>`skipPreaggregation` - the OLAP system will assume that no values in the source collection contribute to aggregates, so it won't do any initial calculations; **only use if all dimensions' paths have at least one array** |
 | `"aggregate"`<br>aggregates the cube | `cubeName` - name of cube<br>`measures` - measures to include in aggregation<br>`dimensions` - dimensions to keep separate in aggregation<br>`filters` - filters for including documents in aggregation |
 
 All other requests are optional and rarely used:
