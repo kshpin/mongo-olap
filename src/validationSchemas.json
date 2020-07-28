@@ -1,3 +1,145 @@
-[
-
-]
+{
+  "OLAP": {
+    "createCube": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "model": {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "string"
+            },
+            "dimensions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  },
+                  "timeFormat": {
+                    "type": "string"
+                  },
+                  "granularity": {
+                    "type": "string"
+                  }
+                },
+                "required": ["path", "id"]
+              }
+            },
+            "measures": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "string"
+                  }
+                },
+                "required": ["path", "id"]
+              }
+            }
+          },
+          "required": ["source", "dimensions", "measures"]
+        },
+        "principalEntity": {
+          "type": "string"
+        },
+        "skipPreaggregation": {
+          "type": "boolean"
+        }
+      },
+      "required": ["name", "model"]
+    },
+    "deleteCube": {
+      "type": "object",
+      "properties": {
+        "cubeName": {
+          "type": "string"
+        }
+      },
+      "required": ["cubeName"]
+    },
+    "startAutoUpdate": {
+      "type": "object",
+      "properties": {
+        "interval": {
+          "type": "number"
+        }
+      },
+      "required": ["interval"]
+    },
+    "stopAutoUpdate": {
+      "type": "object",
+      "properties": {
+        "exiting": {
+          "type": "boolean"
+        }
+      },
+      "required": ["exiting"]
+    },
+    "stopOplogBuffering": {
+      "type": "object",
+      "properties": {
+        "exiting": {
+          "type": "boolean"
+        }
+      },
+      "required": ["exiting"]
+    },
+    "aggregate": {
+      "type": "object",
+      "properties": {
+        "cubeName": {
+          "type": "string"
+        },
+        "dimensions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "granularity": {
+                "type": "string"
+              }
+            },
+            "required": ["id"]
+          }
+        },
+        "measures": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              }
+            },
+            "required": ["id"]
+          }
+        },
+        "filters": {
+          "type": "object"
+        },
+        "dateReturnFormat": {
+          "type": "string"
+        }
+      },
+      "required": ["cubeName", "dateReturnFormat"]
+    }
+  }
+}

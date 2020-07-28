@@ -380,7 +380,7 @@ class Cube {
 		await this._markLastProcessedTime(lastProcessed, true);
 	}
 
-	async getAggregates(measures=[], dimensions=[], filters, dateReturnFormat="ms") {
+	async getAggregates(dimensions=[], measures=[], filters, dateReturnFormat="ms") {
 		let log = logger.child({
 			func: "getAggregates"
 		});

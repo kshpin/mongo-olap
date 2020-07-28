@@ -295,7 +295,7 @@ class OLAP {
 		this.finishEmitter.emit("done");
 	}
 
-	async aggregate({cubeName, measures, dimensions, filters, dateReturnFormat="ms"}) {
+	async aggregate({cubeName, dimensions, measures, filters, dateReturnFormat="ms"}) {
 		let log = logger.child({
 			func: "aggregate"
 		});
