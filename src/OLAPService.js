@@ -182,10 +182,29 @@ async function startService() {
 
 	let runFunction = async (func, params) => {
 		try {
-			return {response: await func.apply(olap, [params]), success: true};
+			return {
+				data: await func.apply(olap, [params]),
+				status: 0
+			};
 		} catch (err) {
-			if (err instanceof InvalidRequestError) return {response: err.message, errors: err.errors, success: false};
-			return {response: err.message, success: false};
+			let response = {
+				errorText: err.message
+			};
+
+			if (err instanceof InvalidRequestError) {
+				response = {
+					...response,
+					errors: err.errors,
+					status: 1
+				};
+			} else {
+				response = {
+					...response,
+					status: -1
+				};
+			}
+
+			return response;
 		}
 	};
 }
