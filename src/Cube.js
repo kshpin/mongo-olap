@@ -177,12 +177,11 @@ class Cube {
 			}
 
 			await session.commitTransaction();
-			session.endSession();
 		} catch (err) {
 			await session.abortTransaction();
-			session.endSession();
-
 			throw err;
+		} finally {
+			session.endSession();
 		}
 
 		this._buildQueries();
