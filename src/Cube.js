@@ -40,6 +40,10 @@ class Cube {
 	}
 
 	async initNew(guaranteeZero) {
+		let log = logger.child({
+			func: "initNew"
+		});
+
 		let toShadowProjection = {};
 
 		let groupId = {};
@@ -49,6 +53,8 @@ class Cube {
 		let convertDates = [];
 
 		let indexKeys = {};
+
+		log.debug({stage: "preparing group query"});
 
 		this.model.dimensions.forEach(dim => {
 			let endPath = "d."+dim.id;
@@ -100,6 +106,8 @@ class Cube {
 			_count: {$sum: 1}
 		};
 
+		log.debug({stage: "preparing aggregation operation query"});
+
 		this.model.measures.forEach(measure => {
 			let endPath = "m."+measure.id;
 			let origPath = measure.path.replace(/\[]/g, "");
@@ -127,7 +135,11 @@ class Cube {
 			{$out: this.cubeColName}
 		];
 
-		this.lastProcessed = (await this.client.db("local").collection("oplog.rs").find({}, {ts: 1}).sort([["ts", -1]]).limit(1).next()).ts;
+		log.debug({stage: "getting last processed time"});
+
+		this.lastProcessed = (await this.db.collection(this.cubeMetaInfoColName).aggregate([{$addFields: {_ts: "$$NOW"}}]).next())._ts;
+
+		log.debug({stage: "applying queries"});
 
 		const session = this.client.startSession();
 		session.startTransaction({});
@@ -137,16 +149,24 @@ class Cube {
 			if (await this.db.listCollections({name: this.cubeColName}).hasNext()) await this.db.collection(this.cubeColName).drop();
 
 			if (guaranteeZero) {
+				log.debug({message: "skipping shadow/cube collection aggregation"});
+
 				await this.db.createCollection(this.shadowColName);
 				await this.db.createCollection(this.cubeColName);
 			} else {
+				log.debug({message: "creating shadow collection"});
 				await this.db.collection(this.dataColName).aggregate(toShadowAggregationQuery, {allowDiskUse: true}).next();
+				log.debug({message: "creating cube collection"});
 				await this.db.collection(this.shadowColName).aggregate(toCubeAggregationQuery, {allowDiskUse: true}).next();
 			}
+
+			log.debug({message: "updating meta information"});
 
 			await this.db.createCollection(this.cubeMetaInfoColName);
 			await this.db.collection(this.cubeMetaInfoColName).deleteMany({model: this.model}, {session});
 			await this.db.collection(this.cubeMetaInfoColName).insertOne({_id: this.name, model: this.model, lastProcessed: this.lastProcessed, valid: true}, {session});
+
+			log.debug({message: "creating indexes"});
 
 			await this.db.collection(this.cubeColName).createIndex(indexKeys, {unique: true, sparse: true});
 			let keys = Object.keys(indexKeys);

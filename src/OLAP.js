@@ -92,6 +92,8 @@ class OLAP {
 	}
 
 	async createCube({name, model, principalEntity, guaranteeZero}) {
+		if (this.cubes.some(cube => cube.name === name)) throw new Error(`cube [${name}] already exists`);
+
 		let cube = new Cube(this.client, this.db, this.cubeMetaInfoColName, name, model, principalEntity);
 		await cube.initNew(guaranteeZero);
 
