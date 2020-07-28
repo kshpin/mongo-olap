@@ -1,3 +1,4 @@
+const {Timestamp} = require("mongodb");
 const logger = require("./logs/logger").child({
 	module: "Cube"
 });
@@ -137,7 +138,7 @@ class Cube {
 
 		log.debug({stage: "getting last processed time"});
 
-		this.lastProcessed = (await this.db.collection(this.cubeMetaInfoColName).aggregate([{$addFields: {_ts: "$$NOW"}}]).next())._ts;
+		this.lastProcessed = Timestamp.fromNumber(Math.floor((await this.db.collection(this.cubeMetaInfoColName).aggregate([{$addFields: {_ts: "$$NOW"}}]).next())._ts.getTime()/1000));
 
 		log.debug({stage: "applying queries"});
 
