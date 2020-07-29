@@ -4,9 +4,8 @@
   "description": "An OLAP service for MongoDB",
   "main": "starters/runOLAPService.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "run": "npm run index.js",
-    "testOLAPService": "node starters/runOLAPService.js",
+    "test": "mocha tests",
+    "run": "node starters/runOLAPService.js",
     "testAsComponent": "node starters/testAsComponent.js"
   },
   "author": {
