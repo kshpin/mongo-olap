@@ -72,6 +72,7 @@ model: {
 Refer to https://olap.com/learn-bi-olap/olap-bi-definitions/ for term definitions (in particular, dimensions and measures).
 
 ## API
+### Embedded
 // TODO give more examples of embedding
 
 Embedding this module into your own project can be done by excluding `OLAPService.js`, and simply calling the public methods of `OLAP`.
@@ -81,6 +82,7 @@ let olap = new OLAP(mongoClient, db, "olap_state", "olap_config");
 ```
 
 ### NATS
+#### Requests
 All parameters are properties of an object in JSON format, stringified.
 
 The main two requests are for creating a cube and aggregating it:
@@ -100,6 +102,48 @@ All other requests are optional and rarely used:
 | `"startOplogBuffering"`<br>begins buffering oplogs, speeding up the update process (on by default) | |
 | `"stopOplogBuffering"`<br>stops buffering oplogs | |
 | `"updateAggregates"`<br>updates aggregates once | |
+
+#### Responses
+NATS responses always include a `status` field, indicating the success of the request (more may be added in the future).
+| Status code | Meaning |
+| --- | --- |
+| `0` | Request successful |
+| `1` | Request invalid |
+| `-1` | Request valid, but resulted in an error |
+
+If `success` is `0`, and if the response carries any further information (an aggregation request, for instance), it will be placed in `data`.
+
+In case `success` is not `0`, the field `errorText` will contain a human readable form of the error. Specifically if `success` is `1`, more information about what part of the request was invalid is included in `errors`.
+
+Possible responses:
+```javascript
+{
+  "status": 0
+}
+```
+```javascript
+{
+  "errorText": "cube [siteVisits] already exists",
+  "status": -1
+}
+```
+```javascript
+{
+  "errorText": "invalid request",
+  "errors": [
+    {
+      "keyword": "required",
+      "dataPath": "",
+      "schemaPath": "#/required",
+      "params": {
+        "missingProperty": "name"
+      },
+      "message": "should have required property 'name'"
+    }
+  ],
+  "status": 1
+}
+```
 
 ## Usage examples
 First create a Cube. The source collection stores information about website visits.
@@ -141,9 +185,7 @@ nc.publish("olap_main_aggregate", {
     }
   ],
   measures: [ // include all the measures that need to be summed up, all others will be ignored
-    {
-      id: "duration"
-    }
+    "duration"
   ],
   filters: {
     startTime: {
