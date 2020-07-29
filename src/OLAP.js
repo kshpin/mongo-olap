@@ -6,6 +6,9 @@ const logger = require("./logs/logger").child({
 
 const Cube = require("./Cube");
 
+const {validateSchema} = require("./Validation");
+const validationSchemas = require("./validationSchemas");
+
 class OLAP {
 
 	static DEFAULT_BUFFERING = true;
@@ -88,10 +91,13 @@ class OLAP {
 		}
 
 		if (state.buffering) await this.startOplogBuffering();
-		if (state.autoUpdating) await this.startAutoUpdate(state.updateInterval);
+		if (state.autoUpdating) await this.startAutoUpdate({interval: state.updateInterval});
 	}
 
-	async createCube({name, model, principalEntity, skipPreaggregation}) {
+	async createCube(request) {
+		validateSchema(validationSchemas.OLAP.createCube, request);
+		let {name, model, principalEntity, skipPreaggregation} = request;
+
 		if (this.cubes.some(cube => cube.name === name)) throw new Error(`cube [${name}] already exists`);
 
 		let cube = new Cube(this.client, this.db, this.cubeMetaInfoColName, name, model, principalEntity);
@@ -154,7 +160,10 @@ class OLAP {
 		}));
 	}
 
-	async deleteCube({cubeName}) {
+	async deleteCube(request) {
+		validateSchema(validationSchemas.OLAP.deleteCube, request);
+		let {cubeName} = request;
+
 		let cubeIdx = this.cubes.findIndex(cube => cube.name === cubeName);
 		if (cubeIdx === -1) throw new Error(`no cube [${cubeName}]`);
 		let cube = this.cubes[cubeIdx];
@@ -175,7 +184,11 @@ class OLAP {
 		this.updateTimeout = setTimeout(this.updateAggregates.bind(this), this.updateInterval);
 	}
 
-	async startAutoUpdate({interval=OLAP.DEFAULT_UPDATE_INTERVAL}) {
+	async startAutoUpdate(request) {
+		request.interval = request.interval || OLAP.DEFAULT_UPDATE_INTERVAL;
+		validateSchema(validationSchemas.OLAP.startAutoUpdate, request);
+		let {interval} = request;
+
 		this.autoUpdating = true;
 		this.updateInterval = interval;
 
@@ -184,7 +197,11 @@ class OLAP {
 		this._queueUpdate();
 	}
 
-	stopAutoUpdate({exiting=false}) {
+	stopAutoUpdate(request) {
+		request.exiting = request.exiting || false;
+		validateSchema(validationSchemas.OLAP.stopAutoUpdate, request);
+		let {exiting} = request;
+
 		clearTimeout(this.updateTimeout);
 		this.autoUpdating = false;
 
@@ -219,7 +236,11 @@ class OLAP {
 		await this.db.collection(this.stateColName).updateOne({_id: "state"}, {$set: {buffering: true}});
 	}
 
-	async stopOplogBuffering({exiting=false}) {
+	async stopOplogBuffering(request) {
+		request.exiting = request.exiting || false;
+		validateSchema(validationSchemas.OLAP.stopAutoUpdate, request);
+		let {exiting} = request;
+
 		if (!this.oplogStream) return;
 
 		this.oplogStream.off("data", this.onData);
@@ -295,7 +316,11 @@ class OLAP {
 		this.finishEmitter.emit("done");
 	}
 
-	async aggregate({cubeName, dimensions, measures, filters, dateReturnFormat="ms"}) {
+	async aggregate(request) {
+		request.dateReturnFormat = request.dateReturnFormat || "ms";
+		validateSchema(validationSchemas.OLAP.aggregate, request);
+		let {cubeName, dimensions, measures, filters, dateReturnFormat} = request;
+
 		let log = logger.child({
 			func: "aggregate"
 		});
