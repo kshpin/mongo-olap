@@ -2101,6 +2101,8 @@ describe("OLAP", function() {
 
 			await new Promise(res => setTimeout(res, 100));
 
+			olap.oplogBuffer = []; // due to imprecise Timestamps, the buffer may contain more oplogs from previous operations, but the system's idempotency allows that
+
 			await db.collection("c1").deleteOne({c: "City 3"});
 
 			await new Promise(res => setTimeout(res, 100));
@@ -2140,6 +2142,10 @@ describe("OLAP", function() {
 					}
 				]
 			}});
+
+			await new Promise(res => setTimeout(res, 100));
+
+			olap.oplogBuffer = []; // due to imprecise Timestamps, the buffer may contain more oplogs from previous operations, but the system's idempotency allows that
 
 			await db.collection("c1").deleteOne({c: "City 3"});
 
