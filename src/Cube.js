@@ -138,7 +138,7 @@ class Cube {
 
 		log.debug({stage: "getting last processed time"});
 
-		this.lastProcessed = Timestamp.fromNumber(Math.floor((await this.client.db("admin").collection("system.version").aggregate([{$addFields: {_ts: "$$NOW"}}]).next())._ts.getTime()/1000));
+		this.lastProcessed = new Timestamp(0, (await this.client.db("admin").collection("system.version").aggregate([{$addFields: {_ts: "$$NOW"}}]).next())._ts.getTime()/1000);
 
 		log.debug({stage: "applying queries"});
 
@@ -381,7 +381,7 @@ class Cube {
 		await this._markLastProcessedTime(lastProcessed, true);
 	}
 
-	async getAggregates(dimensions=[], measures=[], filters, dateReturnFormat="ms") {
+	async getAggregates(dimensions, measures, filters, dateReturnFormat) {
 		let log = logger.child({
 			func: "getAggregates"
 		});

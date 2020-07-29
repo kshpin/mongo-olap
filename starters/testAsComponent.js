@@ -1,4 +1,4 @@
-const MongoClient = require("mongodb").MongoClient;
+const {MongoClient, Timestamp} = require("mongodb");
 const OLAP = require("../src/OLAP");
 
 async function connectDb(url, dbName) {
@@ -13,77 +13,13 @@ async function connectDb(url, dbName) {
 
 	let {mongoClient, db} = await connectDb(url, dbName);
 
-	let olap = new OLAP(mongoClient, db, "olap_state", "olap_cubes"); // each OLAP is tied to a particular DB
-	await olap.startOplogListening(null);
+	let response = await db.collection("c_test").find({
+		_id: "throughNode"/*,
+		zeroOne: new Timestamp(0, 1),
+		oneZero: new Timestamp(1, 0)*/
+	}).next();
 
-	/*await olap.loadCube({
-		source: "db1.c2",
-		dimensions: [
-			{
-				path: "type",
-				id: "type"
-			}
-		],
-		measures: [
-			{
-				path: "number",
-				id: "number"
-			}
-		]
-	});
-
-	await olap.loadCube({
-		source: "db1.c_test",
-		dimensions: [
-			{
-				path: "c",
-				id: "cField"
-			},
-			{
-				path: "a",
-				id: "aField"
-			},
-		],
-		measures: [
-			{
-				path: "b",
-				id: "bField"
-			}
-		]
-	});*/
-
-	await olap.loadCubes();
-
-	/*await olap.createCube({
-		source: "db1.c1",
-		dimensions: [
-			{
-				path: "state",
-				id: "stateID"
-			},
-			{
-				path: "city",
-				id: "cityID"
-			},
-		],
-		measures: [
-			{
-				path: "pop",
-				id: "population"
-			}
-		]
-	});*/
-
-	console.log(await olap.aggregate(
-		"c1",
-		[
-			"population"
-		],
-		[
-			{dimension: "stateID"}
-		],
-		{
-			cityID: "SAN JOSE"
-		}
-	));
+	console.log(response);
 })();
+
+// Timestamp(low, high) // high bits determine time, low are tie-breakers

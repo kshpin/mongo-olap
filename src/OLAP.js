@@ -49,7 +49,7 @@ class OLAP {
 		this.stateColName = stateColName;
 		this.cubeMetaInfoColName = cubeInfoColName;
 
-		this.oldestOplogTs = Timestamp.fromNumber(Date.now()/1000);
+		this.oldestOplogTs = new Timestamp(0, Date.now()/1000);
 
 		this.onError = () => this.startOplogBuffering();
 		this.onData = doc => {
@@ -317,6 +317,8 @@ class OLAP {
 	}
 
 	async aggregate(request) {
+		request.dimensions = request.dimensions || [];
+		request.measures = request.measures || [];
 		request.dateReturnFormat = request.dateReturnFormat || "ms";
 		validateSchema(validationSchemas.OLAP.aggregate, request);
 		let {cubeName, dimensions, measures, filters, dateReturnFormat} = request;
@@ -334,7 +336,7 @@ class OLAP {
 
 		log.debug({message: "arguments valid so far"});
 
-		return await cube.getAggregates(measures, dimensions, filters, dateReturnFormat);
+		return await cube.getAggregates(dimensions, measures, filters, dateReturnFormat);
 	}
 }
 
