@@ -138,7 +138,7 @@ class Cube {
 
 		log.debug({stage: "getting last processed time"});
 
-		this.lastProcessed = Timestamp.fromNumber(Math.floor((await this.db.collection(this.cubeMetaInfoColName).aggregate([{$addFields: {_ts: "$$NOW"}}]).next())._ts.getTime()/1000));
+		this.lastProcessed = Timestamp.fromNumber(Math.floor((await this.client.db("admin").collection("system.version").aggregate([{$addFields: {_ts: "$$NOW"}}]).next())._ts.getTime()/1000));
 
 		log.debug({stage: "applying queries"});
 
