@@ -123,13 +123,7 @@
         "measures": {
           "type": "array",
           "items": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string"
-              }
-            },
-            "required": ["id"]
+            "type": "string"
           }
         },
         "filters": {
