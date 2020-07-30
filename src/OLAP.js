@@ -261,59 +261,61 @@ class OLAP {
 
 		this.currentlyUpdating = true;
 
-		log.debug({stage: "getting oplogs"});
+		try {
+			log.debug({stage: "getting oplogs"});
 
-		let oplogs;
-		if (this.buffering) {
-			oplogs = this.oplogBuffer;
-			this.oplogBuffer = [];
-		} else oplogs = await this.client.db("local").collection("oplog.rs").find({
-			ns: {$in: this._getNamespaces()},
-			ts: {$gt: this.oldestOplogTs},
-			op: {$in: ["i", "u", "d"]},
-			$or: [{o: {$exists: 1}}, {o2: {$exists: 1}}]
-		}, {
-			tailable: false,
-			awaitData: false,
-			oplogReplay: false,
-			numberOfRetries: 0
-		}).project({
-			ns: 1,
-			ts: 1,
-			o: 1,
-			o2: 1
-		}).toArray();
+			let oplogs;
+			if (this.buffering) {
+				oplogs = this.oplogBuffer;
+				this.oplogBuffer = [];
+			} else oplogs = await this.client.db("local").collection("oplog.rs").find({
+				ns: {$in: this._getNamespaces()},
+				ts: {$gt: this.oldestOplogTs},
+				op: {$in: ["i", "u", "d"]},
+				$or: [{o: {$exists: 1}}, {o2: {$exists: 1}}]
+			}, {
+				tailable: false,
+				awaitData: false,
+				oplogReplay: false,
+				numberOfRetries: 0
+			}).project({
+				ns: 1,
+				ts: 1,
+				o: 1,
+				o2: 1
+			}).toArray();
 
-		log.debug({stage: "filtering oplogs"});
+			log.debug({stage: "filtering oplogs"});
 
-		let namespaces = this._getNamespaces();
-		let oplogsByNamespace = {};
-		let lastOplogTs = this.oldestOplogTs;
-		namespaces.forEach(ns => {
-			oplogsByNamespace[ns] = oplogs.filter(oplog => {
-				if (lastOplogTs.compare(oplog.ts) < 0) lastOplogTs = oplog.ts;
-				return oplog.ns === ns;
-			}).map(oplog => {
-				if (oplog.o2) return {ts: oplog.ts, _id: oplog.o2._id};
-				return {ts: oplog.ts, _id: oplog.o._id};
+			let namespaces = this._getNamespaces();
+			let oplogsByNamespace = {};
+			let lastOplogTs = this.oldestOplogTs;
+			namespaces.forEach(ns => {
+				oplogsByNamespace[ns] = oplogs.filter(oplog => {
+					if (lastOplogTs.compare(oplog.ts) < 0) lastOplogTs = oplog.ts;
+					return oplog.ns === ns;
+				}).map(oplog => {
+					if (oplog.o2) return {ts: oplog.ts, _id: oplog.o2._id};
+					return {ts: oplog.ts, _id: oplog.o._id};
+				});
 			});
-		});
 
-		log.debug({stage: "updating aggregates"});
+			log.debug({stage: "updating aggregates"});
 
-		for (let ns of namespaces) {
-			for (let curCube of this.cubes) {
-				log.trace({stage: "updating aggregates", cube: curCube.name});
-				await curCube.processOplogs(oplogsByNamespace[ns], lastOplogTs);
+			for (let ns of namespaces) {
+				for (let curCube of this.cubes) {
+					log.trace({stage: "updating aggregates", cube: curCube.name});
+					await curCube.processOplogs(oplogsByNamespace[ns], lastOplogTs);
+				}
 			}
+
+			if (lastOplogTs) this.oldestOplogTs = lastOplogTs;
+		} finally {
+			if (this.autoUpdating) this._queueUpdate(this.updateInterval);
+
+			this.currentlyUpdating = false;
+			this.finishEmitter.emit("done");
 		}
-
-		if (lastOplogTs) this.oldestOplogTs = lastOplogTs;
-
-		if (this.autoUpdating) this._queueUpdate(this.updateInterval);
-
-		this.currentlyUpdating = false;
-		this.finishEmitter.emit("done");
 	}
 
 	async aggregate(request) {
