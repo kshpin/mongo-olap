@@ -33,7 +33,7 @@ NATS version: `1.4.8` or higher.
 ## Model
 The cube model is described in the following way:
 ```javascript
-model: {
+{
   source: "sourceCollection",
   dimensions: [
     {
@@ -86,12 +86,14 @@ let olap = new OLAP(mongoClient, db, "olap_state", "olap_config");
 All parameters are properties of an object in JSON format, stringified.
 
 The main two requests are for creating a cube and aggregating it:
+
 | Publish topic | Parameters |
 | --- | --- |
 | `"createCube"`<br>creates a cube | `name` - name of the cube<br>`model` - cube model<br>`principalEntity` - the logical entity representing what the cube is aggregating<br>`skipPreaggregation` - boolean value, if `true` the OLAP system will assume that no values in the source collection contribute to aggregates, so it won't do any initial calculations; **only use if all dimensions' paths have at least one array** |
 | `"aggregate"`<br>aggregates the cube | `cubeName` - name of cube<br>`measures` - measures to include in aggregation<br>`dimensions` - dimensions to keep separate in aggregation<br>`filters` - filters for including documents in aggregation |
 
 All other requests are optional and rarely used:
+
 | Publish topic | Parameters |
 | --- | --- |
 | `"loadCubes"`<br>loads cubes from configuration | |
@@ -105,29 +107,30 @@ All other requests are optional and rarely used:
 
 #### Responses
 NATS responses always include a `status` field, indicating the success of the request (more may be added in the future).
+
 | Status code | Meaning |
 | --- | --- |
 | `0` | Request successful |
-| `1` | Request invalid |
-| `-1` | Request valid, but resulted in an error |
+| `1` | Request resulted in an error |
+| `2` | Request invalid |
 
 If `success` is `0`, and if the response carries any further information (an aggregation request, for instance), it will be placed in `data`.
 
 In case `success` is not `0`, the field `errorText` will contain a human readable form of the error. Specifically if `success` is `1`, more information about what part of the request was invalid is included in `errors`.
 
 Possible responses:
-```javascript
+```json
 {
   "status": 0
 }
 ```
-```javascript
+```json
 {
   "errorText": "cube [siteVisits] already exists",
-  "status": -1
+  "status": 1
 }
 ```
-```javascript
+```json
 {
   "errorText": "invalid request",
   "errors": [
@@ -141,7 +144,7 @@ Possible responses:
       "message": "should have required property 'name'"
     }
   ],
-  "status": 1
+  "status": 2
 }
 ```
 
