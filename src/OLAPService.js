@@ -195,12 +195,12 @@ async function startService() {
 				response = {
 					...response,
 					errors: err.errors,
-					status: 1
+					status: 2
 				};
 			} else {
 				response = {
 					...response,
-					status: -1
+					status: 1
 				};
 			}
 
