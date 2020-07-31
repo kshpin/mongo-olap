@@ -1,6 +1,7 @@
 const {MongoClient} = require("mongodb");
 const NATS = require("nats");
 const OLAP = require("./OLAP");
+const OLAPWrapper = require("./OLAPWrapper");
 const logger = require("./logs/logger").child({
 	module: "OLAPService"
 });
@@ -28,7 +29,7 @@ async function startService() {
 
 	let mongoClient;
 	let db;
-	let olap;
+	let olapWrapper;
 
 	let nc;
 
@@ -36,7 +37,6 @@ async function startService() {
 
 	// process signal handle -------------------------------------------------------------------------------------------
 
-	let processingRequests = 0;
 	let shuttingDown = false;
 
 	let sigResponse = async (signal) => {
@@ -51,43 +51,21 @@ async function startService() {
 		shuttingDown = true;
 
 		try {
-			if (olap) {
-				olap.stopAutoUpdate({exiting: true});
-
-				if (processingRequests !== 0 || olap.currentlyUpdating) log.debug({stage: "waiting for jobs to complete"});
-				while (processingRequests !== 0 || olap.currentlyUpdating) {
-					await new Promise(res => olap.finishEmitter.once("done", res));
-
-					log.trace({
-						event: "job completed",
-						requestsLeft: processingRequests,
-						currentlyUpdatingAggregates: olap.currentlyUpdating
-					});
-				}
-
-				if (olap) {
-					await olap.stopOplogBuffering({exiting: true});
-					log.debug({event: "oplog buffering stopped"});
-				}
-			}
-
 			log.info({stage: "shutting down"});
+			await olapWrapper.cleanUp();
 
 			if (mongoClient) {
 				await mongoClient.close();
 				log.debug({event: "mongo client closed"});
 			}
 
-			for (code of subscribeCodes) {
-				nc.unsubscribe(code);
-			}
-
-			log.debug({stage: "shutting down", event: "done"});
+			subscribeCodes.forEach(code => nc.unsubscribe(code));
 		} catch (err) {
 			log.warn({error: err.message});
 			process.exit(1);
 		}
 
+		log.debug({stage: "shutting down", event: "done"});
 		process.exit(0);
 	};
 
@@ -110,7 +88,7 @@ async function startService() {
 	log.debug({stage: "Connected to MongoDB"});
 
 	try {
-		olap = new OLAP(mongoClient, db, "olap_state", "olap_cubes");
+		olapWrapper = new OLAPWrapper(new OLAP(mongoClient, db, "olap_state", "olap_cubes"));
 	} catch (err) {
 		log.fatal({error: err.message});
 		sigResponse("SELF KILL");
@@ -143,10 +121,10 @@ async function startService() {
 		connected = true;
 
 		log.debug({stage: "loading state"});
-		await olap.loadState();
-		await olap.loadCubes();
+		await olapWrapper.call("loadState");
+		await olapWrapper.call("loadCubes");
 
-		subscribeCodes = API.map(func => nc.subscribe(`${config.nats.prefix}.${func}`, (msg, reply) => natsResponse(msg, reply, olap[func])));
+		subscribeCodes = API.map(func => nc.subscribe(`${config.nats.prefix}.${func}`, (msg, reply) => natsResponse(msg, reply, func)));
 	});
 
 	// nats request handle ---------------------------------------------------------------------------------------------
@@ -172,20 +150,16 @@ async function startService() {
 
 		log.debug({event: "starting job", job: func.name});
 
-		processingRequests++;
 		let result = await runFunction(func, args);
-		processingRequests--;
-
 		if (reply) nc.publish(reply, result);
 
 		log.debug({event: "job complete", job: func.name});
-		olap.finishEmitter.emit("done");
 	};
 
 	let runFunction = async (func, params) => {
 		try {
 			return {
-				data: await func.apply(olap, [params]),
+				data: await olapWrapper.call(func, params),
 				status: 0
 			};
 		} catch (err) {
