@@ -50,27 +50,29 @@ async function startService() {
 
 		shuttingDown = true;
 
-		if (olap) olap.stopAutoUpdate({exiting: true});
-
-		if (processingRequests !== 0 || (olap && olap.currentlyUpdating)) log.debug({stage: "waiting for jobs to complete"});
-		while (processingRequests !== 0 || (olap && olap.currentlyUpdating)) {
-			await new Promise(res => olap.finishEmitter.once("done", res));
-
-			let trace = {
-				event: "job completed",
-				requestsLeft: processingRequests
-			};
-			if (olap) trace.currentlyUpdatingAggregates = olap.currentlyUpdating;
-			log.trace(trace);
-		}
-
-		log.info({stage: "shutting down"});
-
 		try {
 			if (olap) {
-				await olap.stopOplogBuffering({exiting: true});
-				log.debug({event: "oplog buffering stopped"});
+				olap.stopAutoUpdate({exiting: true});
+
+				if (processingRequests !== 0 || olap.currentlyUpdating) log.debug({stage: "waiting for jobs to complete"});
+				while (processingRequests !== 0 || olap.currentlyUpdating) {
+					await new Promise(res => olap.finishEmitter.once("done", res));
+
+					log.trace({
+						event: "job completed",
+						requestsLeft: processingRequests,
+						currentlyUpdatingAggregates: olap.currentlyUpdating
+					});
+				}
+
+				if (olap) {
+					await olap.stopOplogBuffering({exiting: true});
+					log.debug({event: "oplog buffering stopped"});
+				}
 			}
+
+			log.info({stage: "shutting down"});
+
 			if (mongoClient) {
 				await mongoClient.close();
 				log.debug({event: "mongo client closed"});
