@@ -211,22 +211,7 @@ class OLAP {
 	async startOplogBuffering() {
 		await this.stopOplogBuffering({});
 
-		this.oplogStream = this.client.db("local").collection("oplog.rs").find({
-			ns: {$in: this._getNamespaces()},
-			ts: {$gt: this.oldestOplogTs},
-			op: {$in: ["i", "u", "d"]},
-			$or: [{o: {$exists: 1}}, {o2: {$exists: 1}}]
-		}, {
-			tailable: true,
-			awaitData: true,
-			oplogReplay: true, // skip initial scan, only works when restricting "ts"
-			numberOfRetries: Number.MAX_VALUE
-		}).project({
-			ns: 1,
-			ts: 1,
-			o: 1,
-			o2: 1
-		}).stream();
+		this.oplogStream = await this._getOplogs(true);
 
 		this.oplogStream.on("data", this.onData);
 		this.oplogStream.on("error", this.onError);
@@ -254,6 +239,27 @@ class OLAP {
 		if (!exiting) this.db.collection(this.stateColName).updateOne({_id: "state"}, {$set: {buffering: false}});
 	}
 
+	async _getOplogs(buffering) {
+		let cursor = this.client.db("local").collection("oplog.rs").find({
+			ns: {$in: this._getNamespaces()},
+			ts: {$gt: this.oldestOplogTs},
+			op: {$in: ["i", "u", "d"]},
+			$or: [{o: {$exists: 1}}, {o2: {$exists: 1}}]
+		}, {
+			tailable: buffering,
+			awaitData: buffering,
+			oplogReplay: buffering, // skip initial scan, only works when restricting "ts"
+			numberOfRetries: buffering ? Number.MAX_VALUE : 0
+		}).project({
+			ns: 1,
+			ts: 1,
+			o: 1,
+			o2: 1
+		});
+
+		return await (buffering ? cursor.stream() : cursor.toArray());
+	}
+
 	async updateAggregates() {
 		let log = logger.child({
 			func: "updateAggregates"
@@ -268,22 +274,7 @@ class OLAP {
 			if (this.buffering) {
 				oplogs = this.oplogBuffer;
 				this.oplogBuffer = [];
-			} else oplogs = await this.client.db("local").collection("oplog.rs").find({
-				ns: {$in: this._getNamespaces()},
-				ts: {$gt: this.oldestOplogTs},
-				op: {$in: ["i", "u", "d"]},
-				$or: [{o: {$exists: 1}}, {o2: {$exists: 1}}]
-			}, {
-				tailable: false,
-				awaitData: false,
-				oplogReplay: false,
-				numberOfRetries: 0
-			}).project({
-				ns: 1,
-				ts: 1,
-				o: 1,
-				o2: 1
-			}).toArray();
+			} else oplogs = await this._getOplogs(false);
 
 			log.debug({stage: "filtering oplogs"});
 
