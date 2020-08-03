@@ -79,6 +79,7 @@ describe("OLAP", function() {
 		assert.equal(await db.collection("c1").find({}).count(), 4);
 
 		olap = new OLAP(client, db, "olap_state", "olap_cubes");
+		//await olap.loadState();
 	});
 
 	describe("MongoDB mechanics", function() {
@@ -1560,6 +1561,81 @@ describe("OLAP", function() {
 			assert.deepEqual(rest3, {
 				count: 1,
 				m: {procLength: 100}
+			});
+		});
+
+		it("should be idempotent", async function() {
+			await olap.stopAutoUpdate({});
+			await olap.stopOplogBuffering({});
+
+			await olap.createCube({name: "main", model: {
+				source: "c1",
+				dimensions: [
+					{
+						path: "c",
+						id: "city"
+					}
+				],
+				measures: [
+					{
+						path: "m",
+						id: "males"
+					},
+					{
+						path: "f",
+						id: "females"
+					}
+				]
+			}});
+
+			await olap.updateAggregates();
+
+			let origGetOplogs = olap._getOplogs;
+			olap._getOplogs = async (...args) => {
+				let oplogs = await origGetOplogs.call(olap, ...args);
+				await db.collection("c1").updateOne({c: "City 3"}, {$inc: {m: 10000}});
+
+				await new Promise(res => setTimeout(res, 100));
+
+				return oplogs;
+			};
+
+			let {_id: _id0, d: d0, ...rest0} = await db.collection("olap_c1_main_cube").find({"d.city": "City 3"}).next();
+			assert.deepEqual(rest0, {
+				count: 1,
+				m: {
+					females: 2000,
+					males: 1000
+				}
+			});
+
+			olap.oplogBuffer = [];
+			await db.collection("c1").updateOne({c: "City 3"}, {$set: {m: 1001}});
+
+			await new Promise(res => setTimeout(res, 100));
+
+			await olap.updateAggregates();
+
+			let {_id: _id1, d: d1, ...rest1} = await db.collection("olap_c1_main_cube").find({"d.city": "City 3"}).next();
+			assert.deepEqual(rest1, {
+				count: 1,
+				m: {
+					females: 2000,
+					males: 11001
+				}
+			});
+
+			olap._getOplogs = origGetOplogs;
+
+			await olap.updateAggregates();
+
+			let {_id: _id2, d: d2, ...rest2} = await db.collection("olap_c1_main_cube").find({"d.city": "City 3"}).next();
+			assert.deepEqual(rest2, {
+				count: 1,
+				m: {
+					females: 2000,
+					males: 11001
+				}
 			});
 		});
 	});
