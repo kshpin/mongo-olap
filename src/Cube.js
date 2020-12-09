@@ -491,6 +491,7 @@ class Cube {
 		};
 
 		measures.forEach(measure => {
+			if (measure === "_count") return; // should not be an explicit measure
 			groupQuery[measure] = {$sum: "$m."+measure};
 			finalProjection.m[measure] = "$"+measure;
 		});
