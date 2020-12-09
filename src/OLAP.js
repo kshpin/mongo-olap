@@ -6,7 +6,7 @@ const logger = require("./logs/logger").child({
 
 const Cube = require("./Cube");
 
-const {validateSchema} = require("./Validation");
+const {validateSchema, InvalidRequestError} = require("./Validation");
 const validationSchemas = require("./validationSchemas");
 
 class OLAP {
@@ -310,6 +310,8 @@ class OLAP {
 	}
 
 	async aggregate(request) {
+		if (typeof request !== "object") throw new InvalidRequestError({message: `expected type [object], got [${typeof request}]`});
+
 		request.dimensions = request.dimensions || [];
 		request.measures = request.measures || [];
 		request.dateReturnFormat = request.dateReturnFormat || "ms";

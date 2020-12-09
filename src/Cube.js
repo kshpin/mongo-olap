@@ -425,6 +425,7 @@ class Cube {
 			finalProjection[endPath] = "$_id."+dim.id;
 
 			let modelDim = this.model.dimensions.find(d => d.id === dim.id);
+			if (!modelDim) throw new Error(`no dimension [${dim.id}] in model for cube [${this.name}]`);
 			if (modelDim.type === "time") {
 				if (dateReturnFormat === "ms") finalProjection[endPath] = {$toDouble: "$_id."+dim.id};
 
