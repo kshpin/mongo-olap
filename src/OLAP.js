@@ -236,7 +236,7 @@ class OLAP {
 
 		this.buffering = false;
 
-		if (!exiting) this.db.collection(this.stateColName).updateOne({_id: "state"}, {$set: {buffering: false}});
+		if (!exiting) await this.db.collection(this.stateColName).updateOne({_id: "state"}, {$set: {buffering: false}});
 	}
 
 	async _getOplogs(buffering) {
